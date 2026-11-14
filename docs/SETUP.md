@@ -282,7 +282,7 @@ $env:PORT=8001; .venv\Scripts\pixeldrex-web.exe
 
 ### W8. God mode (optional)
 
-Needs Intern, which needs Python 3.12 or newer:
+Needs Intern, which needs Python 3.12 or newer. God mode was built and tested on Linux and is untested on Windows (Intern runs shell commands as its tools); everything else in this guide works without it.
 
 ```powershell
 .venv\Scripts\python.exe -m pip install uv
