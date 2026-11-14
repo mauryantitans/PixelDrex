@@ -79,6 +79,28 @@ scanned-style field report (`scripts/make_sample_doc.py`); NDI read it in ~18 s 
 *Top: the world built straight from the field notes froze (a heat patch flickers; the rules were written from the wrong cell's point of view). Bottom: after Intern's rewrites (it also deleted a rule about parrotfish, a state that did not exist) coral recolonises the rock and seaweed takes over the heat-damaged patch — the "phase shift" the notes describe. Intern reported honestly that it narrowly missed its own activity target (185 of 192 changed cells).*
 
 
+### 📰 This week's news becomes a world (Keenable)
+
+```bash
+.venv/bin/pixeldrex life --news "bird flu"
+```
+
+[Keenable](https://keenable.ai) searches the last 7 days of news on the topic and reads the top articles in full (its
+keyless public endpoints; set `KEENABLE_API_KEY` to use a key). The director turns the reporting into states and rules,
+and **every rule cites the articles it came from**. In the web app, tick *"Build the world from this week's news"* in
+Drex Life mode and the linked headlines appear under the rules.
+
+<p>
+<img src="docs/gallery/news_bird_flu.gif" width="240" alt="bird flu world from this week's news">
+<img src="docs/gallery/news_wildfire.gif" width="240" alt="wildfire world from this week's news">
+</p>
+
+*Left, "bird flu" on Nov 14 2026: five UK reports (outbreaks near Dereham and Dersingham, a national housing order)
+→ `healthy with infected neighbour becomes infected [1, 2, 3]`, `infected becomes culled [2, 3]`,
+`healthy with protected neighbour becomes protected [1, 4]` → rings of infection and culling while the protected zone
+spreads. Right, "wildfire": reporting on New Hampshire's Wild River Fire → `forest with a fire neighbour often becomes
+fire [2, 3]`, `fire with a rain neighbour rarely becomes ash [1, 4]`.*
+
 ## 🎬 Scenes
 
 <p>
@@ -134,6 +156,7 @@ The web app has both modes. In **Drex Life** you watch the world evolve frame by
 | `pixeldrex/god.py` | God mode: Intern tunes a world's rules until it stays alive |
 | `pixeldrex/ndi.py` | NDI: upload or link a document, Extract actors and interactions with page citations, build a cited world |
 | `docs/samples/` | A 2-page scanned-style field report for the NDI demo |
+| `pixeldrex/news.py` | Keenable: search this week's news and read the top articles; build a world whose rules cite them |
 | `scripts/intern.sh`, `intern_logs/` | Run Intern headless on this repo; every Intern run's JSON events and reply |
 | `worlds/` | Saved worlds (rules in English) |
 | `pixeldrex/pixels.py` | Scene engine: paint, background fusion, sample, judge, refine, tiled painting, motion, compositing |

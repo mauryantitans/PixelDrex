@@ -136,6 +136,7 @@ async def run_life_saved(
     idea: str, *, size: int = 32, steps: int = 40, temperature: float = 0.6, on_event=None, quiet: bool = False,
     world_path: str | None = None,
     doc: str | None = None,
+    news: str | None = None,
 ) -> dict:
     """Drex Life: design a world from an idea, run it, save GIF + stats to the gallery."""
     from pixeldrex.life import World, run_life
@@ -144,7 +145,7 @@ async def run_life_saved(
     t_start = time.perf_counter()
     world_obj = None
 
-    doc_meta = None
+    doc_meta = news_meta = None
     if world_path:
         world_obj = World.from_dict(json.loads(Path(world_path).read_text()))
         idea = idea or world_obj.title
@@ -153,6 +154,13 @@ async def run_life_saved(
 
         world_obj, doc_meta = await world_from_document(doc, idea, on_line=prog.log)
         idea = idea or f"world from {Path(doc).name}"
+    elif news:
+        from pixeldrex.news import world_from_news
+
+        world_obj, news_meta = await world_from_news(news, on_line=prog.log)
+        idea = idea or f"this week's news: {news}"
+        if on_event:
+            on_event("sources", {"sources": news_meta["sources"]})
 
     def on_world(w) -> None:
         prog.log(f"world '{w.title}': " + ", ".join(f"{s.name}={s.color}" for s in w.states))
@@ -198,6 +206,10 @@ async def run_life_saved(
         (run_dir / "document.json").write_text(json.dumps(doc_meta, indent=2))
         stats["document"] = doc_meta["document"]
         (run_dir / "stats.json").write_text(json.dumps(stats, indent=2))
+    if news_meta:
+        (run_dir / "news.json").write_text(json.dumps(news_meta, indent=2))
+        stats["news"] = news_meta
+        (run_dir / "stats.json").write_text(json.dumps(stats, indent=2))
 
     # Build compact report
     census_first = life.census_history[0]
@@ -226,19 +238,23 @@ def life_main(argv: list[str]) -> None:
     ap.add_argument("--doc", metavar="PDF_OR_URL",
                     help="build the world from a document: NDI extracts its actors and interactions with page "
                          "citations, and every rule cites its page")
+    ap.add_argument("--news", metavar="TOPIC",
+                    help="build the world from this week's news: Keenable searches and reads the articles, and every "
+                         "rule cites its sources")
     ap.add_argument("--save-world", metavar="PATH", help="also save the world JSON here (e.g. worlds/reef.json)")
     ap.add_argument("--size", type=int, default=32)
     ap.add_argument("--steps", type=int, default=40)
     ap.add_argument("--temp", type=float, default=0.6, help="sampling temperature over Drex's probabilities")
     ap.add_argument("--report", action="store_true", help="print a compact JSON report to stdout after the run")
     args = ap.parse_args(argv)
-    if not args.idea and not args.world_path and not args.doc:
+    if not args.idea and not args.world_path and not args.doc and not args.news:
         ap.error("give an idea, e.g. pixeldrex life \"a zombie outbreak\", or --world FILE, or --doc PDF")
     idea = args.idea or "(from world)"
     if not args.report:
         print(f"PixelDrex Life: {idea}", flush=True)
     res = asyncio.run(run_life_saved(args.idea, size=args.size, steps=args.steps, temperature=args.temp,
-                                     world_path=args.world_path, doc=args.doc, quiet=args.report))
+                                     world_path=args.world_path, doc=args.doc, news=args.news,
+                                     quiet=args.report))
     if args.save_world:
         Path(args.save_world).parent.mkdir(parents=True, exist_ok=True)
         Path(args.save_world).write_text(json.dumps(res["world"], indent=2))

@@ -91,6 +91,8 @@ async def paint(idea: str = Query(..., min_length=2, max_length=200), frames: in
 def _life_event(kind: str, payload: dict) -> dict:
     if kind == "world":
         return {"kind": "world", "world": payload["world"]}
+    if kind == "sources":
+        return {"kind": "sources", "sources": payload["sources"]}
     life, info = payload["life"], payload["info"]
     buf = io.BytesIO()
     life.image(scale=10).save(buf, format="PNG")
@@ -105,7 +107,7 @@ def _life_event(kind: str, payload: dict) -> dict:
 
 @app.get("/api/life")
 async def life(idea: str = Query(..., min_length=2, max_length=200), size: int = Query(32, ge=8, le=48),
-               steps: int = Query(40, ge=5, le=120)):
+               steps: int = Query(40, ge=5, le=120), news: bool = False):
     queue: asyncio.Queue = asyncio.Queue()
 
     def on_event(kind: str, payload: dict) -> None:
@@ -114,7 +116,8 @@ async def life(idea: str = Query(..., min_length=2, max_length=200), size: int =
     async def worker() -> None:
         try:
             async with _one_at_a_time:
-                stats = await run_life_saved(idea, size=size, steps=steps, on_event=on_event, quiet=True)
+                stats = await run_life_saved(None if news else idea, size=size, steps=steps, on_event=on_event,
+                                             quiet=True, news=idea if news else None)
             queue.put_nowait({"kind": "result", "stats": stats, "gif": _gif_url(stats)})
         except Exception as e:
             queue.put_nowait({"kind": "error", "message": f"{type(e).__name__}: {e}"[:400]})
