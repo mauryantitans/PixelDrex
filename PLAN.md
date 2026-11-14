@@ -1,5 +1,9 @@
 # PixelDrex — build plan
 
+> **Note (end of day):** this is the plan written at 11:00. What was actually built grew past it — Drex Life, god mode
+> (Intern), NDI documents, Keenable news, part-based 32×32 sprites — see the [README](README.md) for the final project and
+> [docs/SUBMISSION.md](docs/SUBMISSION.md) for the submission text.
+
 > **Every pixel is a decision.**
 > Drex can't draw — it only answers multiple-choice questions. So we turned every pixel into a question.
 > A 16×16 sprite is a swarm of 256 Drex decisions, one request, ~1 second. Then Drex decides how it moves.

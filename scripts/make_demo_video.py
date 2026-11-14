@@ -20,7 +20,7 @@ CLIPS = [
     ("demo_life_news_wildfire.mp4", "Let it live: this week's wildfire news",
      "Keenable searches and reads the articles; every rule cites its sources."),
     ("demo_scene_rocket.mp4", "Paint it: a rocket launching at night",
-     "Drex decides which part covers every pixel, each part's color, and every frame's position."),
+     "32x32 sprites: Drex decides which part covers every pixel, smooths every edge, and moves it."),
 ]
 
 

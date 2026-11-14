@@ -4,11 +4,11 @@
 
 Built at **Drexathon** (Nace AI, Nov 14 2026) · Track: 🎨 Wildcard
 
-🎥 **Backup demo video (2½ min):** [`docs/video/pixeldrex_demo.mp4`](docs/video/pixeldrex_demo.mp4) — live runs of the web app: a forest fire (replayed world), a wildfire world built from this week's news, and a rocket being painted part by part.
+🎥 **Backup demo video (2½ min):** [`docs/video/pixeldrex_demo.mp4`](docs/video/pixeldrex_demo.mp4) — live runs of the web app: a forest fire (replayed world), a wildfire world built from this week's news, and a 32×32 rocket being painted part by part.
 
 Two ways a decision model makes a GIF:
 
-- **🎬 Paint it (Scenes)** — type an idea; Drex decides which part of each sprite covers every pixel, what color each part is, and how everything moves.
+- **🎬 Paint it (Scenes)** — type an idea; Drex decides which part of each 32×32 sprite covers every pixel, what color each part is, and how everything moves. 512 px GIFs.
 - **🧬 Let it live (Drex Life)** — every pixel is a living agent. You describe a world; its laws of physics are plain English; every frame, every pixel asks Drex what it becomes next.
 
 Everything else picks or fixes what the GIF shows: **this week's news** (Keenable) or **any document** (NDI) can define a world, and in **god mode** Intern rewrites a dull world's rules until the GIF comes alive.
@@ -116,9 +116,9 @@ fire [2, 3]`, `fire with a rain neighbour rarely becomes ash [1, 4]`.*
 <img src="docs/gallery/rocket.gif" width="200">
 </p>
 
-You type an idea. The director turns it into a scene spec (background, up to 3 sprites, how each moves). Then every visual decision is made by [Drex](https://console.nace.ai), Nace's decision model:
+You type an idea. The director turns it into a scene spec (background, up to 3 sprites with their parts, how each moves). Then every visual decision is made by [Drex](https://console.nace.ai), Nace's decision model, on a 64×64 canvas:
 
-1. **Background** — every pixel of a 16×16 grid is one `choice` question over a 15-color palette, plus 16 "which color covers most of row r?" questions, all in **one** request. Each pixel takes the argmax of P(pixel) × P(row)^0.5, so calibrated row answers fill in areas the pixel answers are unsure about.
+1. **Background** — every pixel of a 16×16 grid is one `choice` question over a 15-color palette, plus 16 "which color covers most of row r?" questions, all in **one** request. Each pixel takes the argmax of P(pixel) × P(row)^0.5, so calibrated row answers fill in areas the pixel answers are unsure about. Then it is enlarged to 32×32 and Drex smooths its edges (below).
 2. **Sprite — the right question.** Not "what color is pixel (8, 12)?" but **"which part of the rocket covers pixel (8, 12): nose cone, body, window, fins, flame or empty?"** — plus "what color is the nose cone?" for each part, all in **one** request. The director names each sprite's parts; symmetric sprites (rockets, UFOs, faces, trees) ask only the left half and mirror it. Each part is one solid color, shaded like pixel art (lit top-left edges, shadowed bottom-right) with an outline.
 
 <img src="docs/gallery/parts_vs_colors.png" width="720" alt="color-per-pixel sprites vs part-per-pixel sprites">
@@ -142,11 +142,11 @@ sprites, rendered at 512 px.
 
 ```text
 $ pixeldrex "a ufo abducting a cow at night"
-  [  7.9s] director: 'UFO Abducts Cow' with 2 sprite(s): UFO, Cow
-  [  9.9s] background painted (256 pixel decisions)
+  [  4.4s] director: 'UFO Abducts Cow' with 2 sprite(s): UFO, Cow
+  [  6.6s] background painted (256 pixel decisions)
   ...
-  GIF: out/gallery/20261114-203633-ufo-abducts-cow/anim.gif
-  758 Drex decisions in 5 calls · 10.1s total · Drex ≈ $0.0060 · director $0.00012
+  GIF: out/gallery/20261114-210009-ufo-abducts-cow/anim.gif
+  1,046 Drex decisions in 8 calls · 8.9s total · Drex ≈ $0.0085 · director $0.00010
 ```
 
 Options: `--frames N`, `--ms N`, `--no-outline`, `--spec-only` (show the director's plan), `--spec FILE` (re-paint a saved plan), `--json`.
@@ -176,14 +176,18 @@ The web app has both modes. In **Drex Life** you can describe a new world, build
 | `pixeldrex/news.py` | Keenable: search this week's news and read the top articles; build a world whose rules cite them |
 | `scripts/intern.sh`, `intern_logs/` | Run Intern headless on this repo; every Intern run's JSON events and reply |
 | `worlds/` | Saved worlds (rules in English) |
-| `pixeldrex/pixels.py` | Scene engine: paint, background fusion, sample, judge, refine, tiled painting, motion, compositing |
+| `pixeldrex/parts.py` | Sprites from part questions ("which part covers this pixel?"), symmetry, shading, and Drex edge smoothing to 32×32 |
+| `pixeldrex/pixels.py` | Scene engine: background fusion, motion, compositing (64×64 canvas, 512 px GIFs), plus the earlier color-per-pixel painter |
 | `pixeldrex/director.py` | Scene director: idea → scene spec JSON (DeepInfra LLM) |
 | `pixeldrex/llm.py` | DeepInfra client: chat, vision, FLUX images |
-| `pixeldrex/cli.py` | The `pixeldrex` and `pixeldrex life` commands; saves GIFs, frames, specs and stats to `out/gallery/` |
-| `pixeldrex/web.py`, `pixeldrex/web/index.html` | The web app (FastAPI + server-sent events) |
-| `scripts/` | Experiments: scenes, v1 per-frame painting, large images, background fusion, Life demos |
+| `pixeldrex/cli.py` | The `pixeldrex`, `pixeldrex life` and `pixeldrex god` commands; saves GIFs, frames, specs and stats to `out/gallery/` |
+| `pixeldrex/web.py`, `pixeldrex/web/index.html` | The web app (FastAPI + server-sent events): scenes, Drex Life, news worlds, saved-world replay |
+| `scripts/` | Experiments (parts vs colors, 16 vs 32, v1 per-frame painting, large images, background fusion, Life demos) and the demo-video builder |
+| `docs/deck/` | The pitch deck: built from the real runs (`build_assets.py`, `build_deck.py`) and imported into Adobe Express |
+| `docs/video/` | The backup demo video |
+| `docs/SUBMISSION.md` | The Drexathon submission text |
 | `bench/` | Side experiment: Drex vs LLMs writing pixel grids as text |
-| `PLAN.md` | Build plan for the hackathon |
+| `PLAN.md` | The build plan written at 11:00 (this README describes what was actually built) |
 
 ## License
 
