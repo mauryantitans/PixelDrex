@@ -426,13 +426,14 @@ def compose(
     outline: bool = True,
 ) -> list[Image.Image]:
     canvas = canvas or background.n
-    bg = background.flat().resize((canvas, canvas), Image.NEAREST)
+    bg = shade_background(background).resize((canvas, canvas), Image.NEAREST)
     out = []
     for f in range(frames):
         frame = bg.convert("RGBA")
         for sp, tr in sprites:
             size = max(2, round(tr.sizes[f]))
-            img = sp.image().resize((size, size), Image.NEAREST)
+            src = sp.native() if hasattr(sp, "native") else sp.image()
+            img = src.resize((size, size), Image.NEAREST)
             pad = 1 if outline else 0
             if outline:
                 img = _outlined(img.crop((-pad, -pad, size + pad, size + pad)))
@@ -445,6 +446,22 @@ def compose(
     return out
 
 
+def shade_background(p: Painting) -> Image.Image:
+    """Pixel-art bevel for scenery: the top edge of each color area is lit, the bottom edge shadowed."""
+    n = p.n
+    img = Image.new("RGB", (n, n))
+    for r in range(n):
+        for c in range(n):
+            name = p.grid[r][c]
+            rgb = PALETTE.get(name, (255, 255, 255))
+            if r > 0 and p.grid[r - 1][c] != name:
+                rgb = tuple(int(v + (255 - v) * 0.3) for v in rgb)
+            elif r < n - 1 and p.grid[r + 1][c] != name:
+                rgb = tuple(int(v * 0.8) for v in rgb)
+            img.putpixel((c, r), rgb)
+    return img
+
+
 def save_gif(frames: list[Image.Image], path, ms: int = 90) -> None:
     frames[0].save(path, save_all=True, append_images=frames[1:], duration=ms, loop=0, optimize=False)
 
@@ -454,6 +471,8 @@ class SpriteSpec:
     name: str
     look: str
     motion: str
+    parts: list[dict] = field(default_factory=list)  # [{"name": ..., "where": ...}] -> painted part by part
+    symmetric: bool = True
 
 
 async def scene_gif(
@@ -485,8 +504,17 @@ async def scene_gif(
     bg_desc = (f"background scenery only, with no characters or objects in front: {background}. "
                f"Use large flat areas of color.")
     bg_task = tagged("background", {}, paint_background(drex, bg_desc, n=16, row_weight=row_weight))
-    sprite_tasks = [tagged("sprite", {"name": s.name}, best_painting(drex, s.look, n=sprite_px, k=k, sprite=True))
-                    for s in sprites]
+    from pixeldrex.parts import Part, paint_parts, tidy
+
+    async def sprite_painting(s: SpriteSpec):
+        if s.parts:
+            parts = [Part(str(p.get("name", "part"))[:30], str(p.get("where") or p.get("description") or ""))
+                     for p in s.parts[:6]]
+            return tidy(await paint_parts(drex, f"{s.name} ({s.look})", parts, n=sprite_px,
+                                          symmetric=s.symmetric))
+        return trim(await best_painting(drex, s.look, n=sprite_px, k=k, sprite=True))
+
+    sprite_tasks = [tagged("sprite", {"name": s.name}, sprite_painting(s)) for s in sprites]
     others = ", ".join(f"the {s.name} ({s.motion})" for s in sprites)
     motion_tasks = [
         tagged("motion", {"name": s.name},
@@ -495,7 +523,7 @@ async def scene_gif(
     ]
     bg16, *rest = await asyncio.gather(bg_task, *sprite_tasks, *motion_tasks)
     bg16 = cleanup(bg16, passes=2)
-    sprite_ps = [trim(p) for p in rest[: len(sprites)]]
+    sprite_ps = list(rest[: len(sprites)])
     tracks = rest[len(sprites):]
     bg = bg16 if bg_mode == "flat" else cleanup(await refine(drex, bg_desc, bg16, n=canvas), passes=2)
     frames_out = compose(bg, list(zip(sprite_ps, tracks)), frames, scale=max(1, 320 // canvas),

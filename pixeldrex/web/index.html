@@ -158,7 +158,7 @@
   <div class="gallery-head"><h2>GALLERY</h2><span class="powered" id="gcount"></span></div>
   <div class="grid" id="gallery"></div>
 
-  <footer>Drex Life: cells in the same situation share one Drex question; answers are cached; the next state is sampled from Drex's calibrated probabilities. · Scene: background is 256 pixel questions + 16 row questions in one request · Sprites: painted 3 ways, Drex judges best of 6 · Motion: score questions → expected values → smooth paths.</footer>
+  <footer>Drex Life: cells in the same situation share one Drex question; answers are cached; the next state is sampled from Drex's calibrated probabilities. · Scene: background is 256 pixel questions + 16 row questions in one request · Sprites: Drex picks which part covers each pixel · Motion: score questions → expected values → smooth paths.</footer>
 </div>
 
 <script>
@@ -284,14 +284,14 @@ function start(ev) {
       $("spec").innerHTML = `<b>Scene:</b> ${esc(s.scene)}<br><b>Background:</b> ${esc(s.background)}<ul>` +
         s.sprites.map((x) => `<li><b>${esc(x.name)}</b>: ${esc(x.look)} — <i>${esc(x.motion)}</i></li>`).join("") + "</ul>";
       step("bg", "Painting background", "run", "256 pixel + 16 row questions, one request");
-      step("sprites", "Painting sprites", "run", "each painted 3 ways · Drex judges best of 6");
+      step("sprites", "Painting sprites", "run", "part by part · one request each");
       step("motion", "Deciding motion", "run", "x, y, size for every frame · score questions");
     } else if (e.kind === "background") {
       thumb(step("bg", "Background painted", "ok", "256 pixel + 16 row questions, one request"), e.img, "background");
     } else if (e.kind === "sprite") {
       sprites++;
       const el = step("sprites", `Sprites painted (${sprites}/${nSprites})`, sprites === nSprites ? "ok" : "run",
-        "each painted 3 ways · Drex judges best of 6");
+        "part by part · one request each");
       thumb(el, e.img, e.name);
     } else if (e.kind === "motion") {
       motions++; tracks.push({ name: e.name, track: e.track });

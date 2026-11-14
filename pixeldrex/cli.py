@@ -45,7 +45,7 @@ class Progress:
         if kind == "background":
             self.log("background painted (256 pixel decisions)")
         elif kind == "sprite":
-            self.log(f"sprite '{payload['name']}' painted 3 ways, judged best of 6")
+            self.log(f"sprite '{payload['name']}' painted part by part (one request)")
         elif kind == "motion":
             tr = payload["result"]
             self.log(f"motion for '{payload['name']}' decided: "
@@ -133,7 +133,7 @@ async def run(
 
 
 async def run_life_saved(
-    idea: str, *, size: int = 32, steps: int = 40, temperature: float = 0.6, on_event=None, quiet: bool = False,
+    idea: str, *, size: int = 32, steps: int = 40, temperature: float = 0.8, on_event=None, quiet: bool = False,
     world_path: str | None = None,
     doc: str | None = None,
     news: str | None = None,
@@ -183,7 +183,7 @@ async def run_life_saved(
     total_s = time.perf_counter() - t_start
     run_dir = GALLERY / f"{datetime.now():%Y%m%d-%H%M%S}-life-{slugify(life.world.title)}"
     run_dir.mkdir(parents=True, exist_ok=True)
-    save_gif(frames, run_dir / "anim.gif", ms=150)
+    save_gif(frames, run_dir / "anim.gif", ms=80)  # frames include blended in-betweens
     cell_decisions = size * size * (steps + 1)  # seeding + every step
     stats = {
         "mode": "life",
@@ -244,7 +244,7 @@ def life_main(argv: list[str]) -> None:
     ap.add_argument("--save-world", metavar="PATH", help="also save the world JSON here (e.g. worlds/reef.json)")
     ap.add_argument("--size", type=int, default=32)
     ap.add_argument("--steps", type=int, default=40)
-    ap.add_argument("--temp", type=float, default=0.6, help="sampling temperature over Drex's probabilities")
+    ap.add_argument("--temp", type=float, default=0.8, help="sampling temperature over Drex's probabilities")
     ap.add_argument("--report", action="store_true", help="print a compact JSON report to stdout after the run")
     args = ap.parse_args(argv)
     if not args.idea and not args.world_path and not args.doc and not args.news:

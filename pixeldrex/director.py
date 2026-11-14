@@ -22,13 +22,21 @@ Turn the user's idea into a JSON scene spec:
   "scene": "one sentence describing the whole animation",
   "background": "the scenery only, as 2-3 large flat color areas with positions, e.g. 'a light blue sky over green grass that fills the bottom quarter'",
   "sprites": [
-    {{"name": "one or two words", "look": "what it looks like: shape and colors", "motion": "how it moves across the canvas, using words like far left, far right, top, bottom, center, rises, falls, grows, shrinks"}}
+    {{"name": "one or two words", "look": "what it looks like: shape and colors",
+      "parts": [{{"name": "one or two words", "where": "its shape and where it sits in the sprite, e.g. 'the pointed tip at the very top'"}}],
+      "symmetric": true,
+      "motion": "how it moves across the canvas, using words like far left, far right, top, bottom, center, rises, falls, grows, shrinks"}}
   ]
 }}
 
 Rules:
 - 1 to 3 sprites. Each sprite is ONE simple object (a cat, a star, a car), never a group or a crowd.
 - Describe sprites with bold shapes and 2-3 colors from this palette only: {", ".join(PALETTE)}.
+- Give every sprite 2 to 5 parts that together make its shape (e.g. a rocket: nose cone, body, window, fins,
+  flame). Each part's "where" says its shape and position inside the sprite (top, bottom, left and right side,
+  center). Parts are what the painter places pixel by pixel, so make them big and distinct.
+- "symmetric" is true when the sprite looks the same mirrored left-to-right (front views: rockets, UFOs, faces,
+  trees, houses, hearts) and false for side views (a running cat, a fish swimming, a car driving).
 - The background contains no characters or objects that move; put anything that moves in a sprite.
 - Name each background area with a DIFFERENT palette color word (e.g. "a lightgray wall over a brown floor"),
   never two shades of the same color, so the areas are clearly distinct.
@@ -58,7 +66,10 @@ class SceneSpec:
     @classmethod
     def from_dict(cls, d: dict) -> "SceneSpec":
         sprites = [
-            SpriteSpec(str(s.get("name", "sprite"))[:30], str(s.get("look", s.get("name", ""))), str(s.get("motion", "stays in the center")))
+            SpriteSpec(str(s.get("name", "sprite"))[:30], str(s.get("look", s.get("name", ""))),
+                       str(s.get("motion", "stays in the center")),
+                       parts=[p for p in (s.get("parts") or []) if isinstance(p, dict) and p.get("name")][:6],
+                       symmetric=bool(s.get("symmetric", True)))
             for s in (d.get("sprites") or [])[:3]
             if isinstance(s, dict)
         ]

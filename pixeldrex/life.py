@@ -91,6 +91,8 @@ Rules for you:
   ("sand with empty to the south becomes empty") and one for the cell being entered
   ("empty with sand to the north becomes sand"). Never write a movement rule without its partner.
 - Avoid rules that spawn things at random everywhere; change should spread from neighbours.
+- Write spreading and recovery as chances, not certainties ("often catches fire", "sometimes regrows"), so fronts
+  look ragged and natural; and give every state a way back, so the world keeps cycling instead of ending.
 - Colors must contrast strongly with the background state so the action is easy to see.
 - Reply with the JSON object only."""
 
@@ -189,7 +191,7 @@ def _question(world: World, key: tuple, directional: bool) -> dict:
 class Life:
     world: World
     grid: list[list[str]]
-    temperature: float = 0.6
+    temperature: float = 0.8
     seed_value: int = 0
     cache: dict = field(default_factory=dict)  # (me, neighbourhood) -> probabilities
     steps: int = 0
@@ -201,6 +203,8 @@ class Life:
     def __post_init__(self):
         self.rnd = random.Random(self.seed_value)
         self.directional = is_directional(self.world)
+        n = len(self.grid)
+        self.age = [[99] * n for _ in range(n)]  # steps since each cell last changed (for the glow)
         if not self.census_history:
             self.census_history.append(self.census())
             self.changed_history.append(0)
@@ -235,6 +239,9 @@ class Life:
                     row.append(self.rnd.choices(names, weights=w)[0])
                 if row[-1] != self.grid[r][c]:
                     changed += 1
+                    self.age[r][c] = 0
+                else:
+                    self.age[r][c] = min(self.age[r][c] + 1, 99)
             nxt.append(row)
         self.grid = nxt
         self.steps += 1
@@ -245,13 +252,38 @@ class Life:
         return {"step": self.steps, "new_questions": len(new), "cached": len(keys) - len(new),
                 "unique_situations": len(self.cache), "changed": changed}
 
-    def image(self, scale: int = 10) -> Image.Image:
+    def image(self, scale: int = 10, *, style: str = "tiles") -> Image.Image:
+        """Render the grid. Drex decided every state; this only decides how a state looks:
+        beveled tiles, a little per-cell texture, and a glow on cells that just changed (fading over 3 steps)."""
         n = len(self.grid)
-        img = Image.new("RGB", (n, n))
+        if style == "flat" or scale < 4:
+            img = Image.new("RGB", (n, n))
+            for r in range(n):
+                for c in range(n):
+                    img.putpixel((c, r), self.world.color(self.grid[r][c]))
+            return img.resize((n * scale, n * scale), Image.NEAREST)
+        from PIL import ImageDraw
+
+        img = Image.new("RGB", (n * scale, n * scale))
+        d = ImageDraw.Draw(img)
+        glow = {0: 0.3, 1: 0.12}
+
+        def mix(rgb, t, to=(255, 255, 255)):
+            return tuple(int(v + (w - v) * t) for v, w in zip(rgb, to))
+
         for r in range(n):
             for c in range(n):
-                img.putpixel((c, r), self.world.color(self.grid[r][c]))
-        return img.resize((n * scale, n * scale), Image.NEAREST)
+                base = self.world.color(self.grid[r][c])
+                jitter = (((r * 73856093) ^ (c * 19349663)) % 13 - 6) / 100  # stable texture, +-6%
+                rgb = tuple(max(0, min(255, int(v * (1 + jitter)))) for v in base)
+                rgb = mix(rgb, glow.get(self.age[r][c], 0.0), (255, 236, 170))  # warm glow on change
+                x0, y0, x1, y1 = c * scale, r * scale, (c + 1) * scale - 1, (r + 1) * scale - 1
+                d.rectangle([x0, y0, x1, y1], fill=rgb)
+                d.line([x0, y0, x1, y0], fill=mix(rgb, 0.22))  # lit top
+                d.line([x0, y0, x0, y1], fill=mix(rgb, 0.22))  # lit left
+                d.line([x0, y1, x1, y1], fill=mix(rgb, 0.3, (0, 0, 0)))  # shadow bottom
+                d.line([x1, y0, x1, y1], fill=mix(rgb, 0.3, (0, 0, 0)))  # shadow right
+        return img
 
     def census(self) -> dict[str, int]:
         out = {s.name: 0 for s in self.world.states}
@@ -267,7 +299,7 @@ async def run_life(
     world: World | None = None,
     n: int = 24,
     steps: int = 30,
-    temperature: float = 0.6,
+    temperature: float = 0.8,
     on_frame: Callable[[int, Life, dict], None] | None = None,
     on_world: Callable[[World], None] | None = None,
 ) -> tuple[Life, list[Image.Image], dict]:
@@ -283,11 +315,15 @@ async def run_life(
         grid = await seed(drex, world, n)
         life = Life(world, grid, temperature=temperature)
         frames = [life.image()]
+        prev = frames[0]
         if on_frame:
             on_frame(0, life, {"step": 0, "new_questions": n * n, "cached": 0, "unique_situations": 0})
         for _ in range(steps):
             info = await life.step(drex)
-            frames.append(life.image())
+            cur = life.image()
+            frames.append(Image.blend(prev, cur, 0.5))  # in-between frame for smoother motion
+            frames.append(cur)
+            prev = cur
             if on_frame:
                 on_frame(life.steps, life, info)
         usage = drex.usage.summary()

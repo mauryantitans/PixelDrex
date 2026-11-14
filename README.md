@@ -1,24 +1,26 @@
 # PixelDrex
 
-> **Every pixel is a decision.** Drex can't draw — it only answers multiple-choice questions. So we made every pixel a question.
+> **GIFs made entirely of decisions.** Drex can't draw — it only answers multiple-choice questions. So we made every pixel a question, and turned the answers into animated GIFs.
 
 Built at **Drexathon** (Nace AI, Nov 14 2026) · Track: 🎨 Wildcard
 
 🎥 **Backup demo video (2 min):** [`docs/video/pixeldrex_demo.mp4`](docs/video/pixeldrex_demo.mp4) — live runs of the web app: a forest fire, a wildfire world built from this week's news, and a scene being painted.
 
-Two things you can do with it:
+Two ways a decision model makes a GIF:
 
-- **🧬 Drex Life** — every pixel is a living agent. You describe a world; the laws of physics are written in plain English; every step, every cell asks Drex what it becomes next.
-- **🎬 Scenes** — type an idea; Drex paints every pixel of the background and sprites and decides how everything moves.
+- **🎬 Paint it (Scenes)** — type an idea; Drex decides which part of each sprite covers every pixel, what color each part is, and how everything moves.
+- **🧬 Let it live (Drex Life)** — every pixel is a living agent. You describe a world; its laws of physics are plain English; every frame, every pixel asks Drex what it becomes next.
 
-## 🧬 Drex Life
+Everything else picks or fixes what the GIF shows: **this week's news** (Keenable) or **any document** (NDI) can define a world, and in **god mode** Intern rewrites a dull world's rules until the GIF comes alive.
+
+## 🧬 Let it live: Drex Life
 
 <p>
 <img src="docs/gallery/life_forest_fire.gif" width="240" alt="forest fire">
 <img src="docs/gallery/life_zombies.gif" width="240" alt="zombie outbreak">
 </p>
 
-*Left: "a forest fire: lightning starts fires, fire spreads through trees, burnt ground slowly regrows" — lightning strikes, a burning front spreads as a ring, ash follows, trees regrow in the burn scar, and a second strike starts the next wave. Right: "a zombie outbreak in a city" — a human city grows, zombies creep in from the corners and take it.* Nobody animated either one.
+*Left: "a forest fire: lightning starts fires, fire spreads through trees, burnt ground slowly regrows" — lightning strikes, ragged glowing fire fronts spread, burnt ground regrows to grass and then forest, and new fires keep breaking out, so the world cycles instead of ending. Right: "a zombie outbreak in a city" — the infection spreads in glowing waves and the city turns over.* Nobody animated either one. Replay these exact worlds with `pixeldrex life --world worlds/forest-fire-cycle.json` (or `zombie-outbreak-city.json`).
 
 ```bash
 .venv/bin/pixeldrex life "a zombie outbreak in a city"
@@ -30,11 +32,15 @@ Two things you can do with it:
    - **Cells in the same situation share one question**, and Drex's answers are **cached across steps** — the world learns its physics from Drex as it goes. The forest fire made **17,280 cell decisions from 191 unique questions** (15 s, $0.004); by the end, each step needed about one new question.
    - The next state is **sampled from Drex's calibrated probabilities**, so "lightning *rarely* strikes" and "ash *slowly* regrows" really are rare and slow. Randomness in the world *is* Drex's uncertainty.
    - If the rules mention directions (sand *falls*, wind blows *east*), cells see which neighbour is where; otherwise only neighbour counts matter, which collapses far more cells into one question.
+4. **Rendering** (Drex decides every state; this only decides how a state looks): beveled tiles with a little per-cell texture, a warm glow on cells that just changed (fading over 2 steps) so fire fronts and infection waves light up, and a blended in-between frame for smoother motion.
 
 | World | Grid × steps | Cell decisions | Unique Drex questions | Time | Drex cost |
 |---|---|---|---|---|---|
-| Forest fire | 24×24 × 30 | 17,280 | 191 | 15 s | $0.004 |
-| Zombie outbreak | 32×32 × 40 | 40,960 | 590 | 17 s | $0.008 |
+| Forest fire (gallery) | 32×32 × 40 | 41,984 | 1,832 | 22 s | $0.015 |
+| Zombie outbreak (gallery) | 32×32 × 40 | 41,984 | 1,350 | 26 s | $0.012 |
+| Forest fire (earlier, 24×24) | 24×24 × 30 | 17,280 | 191 | 15 s | $0.004 |
+
+Worlds are designed fresh on every run, so results vary: some runs freeze, burn out or turn to noise. The gallery shows the best runs, and `worlds/` keeps their rules for replay.
 
 ### 😇 God mode: Intern rewrites the laws of physics
 
@@ -103,36 +109,33 @@ Drex Life mode and the linked headlines appear under the rules.
 spreads. Right, "wildfire": reporting on New Hampshire's Wild River Fire → `forest with a fire neighbour often becomes
 fire [2, 3]`, `fire with a rain neighbour rarely becomes ash [1, 4]`.*
 
-## 🎬 Scenes
+## 🎬 Paint it: scenes
 
 <p>
 <img src="docs/gallery/ufo.gif" width="200">
 <img src="docs/gallery/rocket.gif" width="200">
-<img src="docs/gallery/sunrise.gif" width="200">
-<img src="docs/gallery/heart.gif" width="200">
-<img src="docs/gallery/birds.gif" width="200">
 </p>
 
 You type an idea. The director turns it into a scene spec (background, up to 3 sprites, how each moves). Then every visual decision is made by [Drex](https://console.nace.ai), Nace's decision model:
 
 1. **Background** — every pixel of a 16×16 grid is one `choice` question over a 15-color palette, plus 16 "which color covers most of row r?" questions, all in **one** request. Each pixel takes the argmax of P(pixel) × P(row)^0.5, so calibrated row answers fill in areas the pixel answers are unsure about.
-2. **Sprite** — painted in 3 phrasings; extra variations are *sampled from Drex's own per-pixel probabilities* (no extra calls); stray pixels are cleaned; Drex Max looks at all 6 candidates and picks the best. Trimmed and given a 1-px outline.
+2. **Sprite — the right question.** Not "what color is pixel (8, 12)?" but **"which part of the rocket covers pixel (8, 12): nose cone, body, window, fins, flame or empty?"** — plus "what color is the nose cone?" for each part, all in **one** request. The director names each sprite's parts; symmetric sprites (rockets, UFOs, faces, trees) ask only the left half and mirror it. Each part is one solid color, shaded like pixel art (lit top-left edges, shadowed bottom-right) with an outline.
+
+<img src="docs/gallery/parts_vs_colors.png" width="720" alt="color-per-pixel sprites vs part-per-pixel sprites">
+
+*Top: asking for a color per pixel (best of 6 candidates). Bottom: asking which part covers each pixel — one call per sprite, 6 sprites in 2.5 s.*
+
 3. **Motion** — one request per sprite asks "where is it, and how big, in each of 16 frames?" as `score` questions. Scores are **expected values**, so the motion comes out sub-pixel smooth.
 
-≈ 6 Drex calls · ≈ 1,100 decisions · ~5 s · < 1¢ per single-sprite GIF. Nobody told the rocket to shrink as it flies away — Drex decided that.
+3–5 Drex calls · 450–900 decisions · 6–10 s · < 1¢ per GIF. Nobody told the rocket to shrink as it flies away — Drex decided that. Front-view sprites come out best; side-view animals are still blobby.
 
 ```text
 $ pixeldrex "a ufo abducting a cow at night"
-  [  2.6s] director: 'UFO Abducts Cow' with 2 sprite(s): UFO, Cow
-  [  3.6s] motion for 'UFO' decided: (15,6) -> (15,6), size 15 -> 15
-  [  3.7s] motion for 'Cow' decided: (15,26) -> (15,5), size 13 -> 13
-  [  5.9s] background painted (256 pixel decisions)
-  [  6.5s] sprite 'UFO' painted 3 ways, judged best of 6
-  [  7.1s] sprite 'Cow' painted 3 ways, judged best of 6
-  [  7.1s] composited 16 frames
-
-  GIF: out/gallery/20261114-192020-ufo-abducts-cow/anim.gif
-  1,890 Drex decisions in 11 calls · 7.1s total · Drex ≈ $0.0131 · director $0.00005
+  [  7.9s] director: 'UFO Abducts Cow' with 2 sprite(s): UFO, Cow
+  [  9.9s] background painted (256 pixel decisions)
+  ...
+  GIF: out/gallery/20261114-203633-ufo-abducts-cow/anim.gif
+  758 Drex decisions in 5 calls · 10.1s total · Drex ≈ $0.0060 · director $0.00012
 ```
 
 Options: `--frames N`, `--ms N`, `--no-outline`, `--spec-only` (show the director's plan), `--spec FILE` (re-paint a saved plan), `--json`.
@@ -142,7 +145,8 @@ Options: `--frames N`, `--ms N`, `--no-outline`, `--spec-only` (show the directo
 ```bash
 python -m venv .venv && .venv/bin/pip install -e .
 cp .env.example .env   # add NACE_API_KEY (console.nace.ai) and DEEPINFRA_API_KEY
-.venv/bin/pixeldrex life "a forest fire"        # Drex Life
+.venv/bin/pixeldrex life "a forest fire"        # Drex Life (a fresh world)
+.venv/bin/pixeldrex life --world worlds/forest-fire-cycle.json   # replay a known-good world
 .venv/bin/pixeldrex "a rocket launching at night" # a scene
 .venv/bin/pixeldrex-web                         # web app on http://127.0.0.1:8000
 ```

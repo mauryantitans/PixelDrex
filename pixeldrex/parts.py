@@ -1,0 +1,148 @@
+"""Sprites from better questions: ask Drex which PART covers each pixel, not which color.
+
+One Drex request per sprite:
+  - for every pixel of the left half (mirrored for symmetric subjects):
+      "Which part of the rocket covers the pixel at row 3, column 6? nose cone / body / window / fin / flame / empty"
+  - for every part: "What color is the rocket's nose cone?" (palette choice)
+Parts are semantic, so the model reasons about where a nose cone or a flame goes; each part gets one solid color,
+then the renderer adds classic pixel-art shading (lit top-left edges, shadowed bottom-right edges) and an outline.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+from PIL import Image
+
+from pixeldrex.drex import Drex, choice
+from pixeldrex.pixels import PALETTE
+
+EMPTY = "empty"
+
+
+@dataclass
+class Part:
+    name: str
+    description: str
+
+
+@dataclass
+class PartsSprite:
+    subject: str
+    grid: list[list[str]]  # part name or EMPTY per pixel
+    colors: dict[str, str]  # part name -> palette color name
+    probs: list[list[dict[str, float]]] = field(default_factory=list)
+
+    @property
+    def n(self) -> int:
+        return len(self.grid)
+
+    def image(self, *, shade: bool = True, outline: bool = True) -> Image.Image:
+        """Native-size RGBA sprite (n x n, or (n+2) x (n+2) with outline)."""
+        n = self.n
+        pad = 1 if outline else 0
+        img = Image.new("RGBA", (n + 2 * pad, n + 2 * pad), (0, 0, 0, 0))
+
+        def at(r: int, c: int) -> str:
+            return self.grid[r][c] if 0 <= r < n and 0 <= c < n else EMPTY
+
+        for r in range(n):
+            for c in range(n):
+                p = self.grid[r][c]
+                if p == EMPTY:
+                    continue
+                rgb = PALETTE.get(self.colors.get(p, "gray"), (140, 140, 150))
+                if shade:
+                    lit = at(r - 1, c) != p or at(r, c - 1) != p
+                    dark = at(r + 1, c) != p or at(r, c + 1) != p
+                    if dark:
+                        rgb = tuple(int(v * 0.72) for v in rgb)
+                    elif lit:
+                        rgb = tuple(int(v + (255 - v) * 0.35) for v in rgb)
+                img.putpixel((c + pad, r + pad), rgb + (255,))
+        if outline:
+            ink = (20, 20, 28, 255)
+            for r in range(-1, n + 1):
+                for c in range(-1, n + 1):
+                    if at(r, c) != EMPTY:
+                        continue
+                    if any(at(r + dr, c + dc) != EMPTY for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1))):
+                        img.putpixel((c + pad, r + pad), ink)
+        return img
+
+    def native(self) -> Image.Image:
+        """Shaded RGBA sprite without outline (the scene compositor adds its own outline)."""
+        return self.image(shade=True, outline=False)
+
+    def flat(self, scale: int = 10, bg=(205, 210, 220), **kw) -> Image.Image:
+        im = self.image(**kw)
+        base = Image.new("RGBA", im.size, bg + (255,))
+        base.alpha_composite(im)
+        return base.convert("RGB").resize((im.width * scale, im.height * scale), Image.NEAREST)
+
+
+def tidy(s: PartsSprite, passes: int = 1) -> PartsSprite:
+    """Remove stray pixels (fewer than 2 same-part 8-neighbours take the most common neighbour), then trim the
+    empty margin and re-center on a square grid."""
+    grid = [row[:] for row in s.grid]
+    n = len(grid)
+    for _ in range(passes):
+        new = [row[:] for row in grid]
+        for r in range(n):
+            for c in range(n):
+                nb = [grid[rr][cc] for rr in range(r - 1, r + 2) for cc in range(c - 1, c + 2)
+                      if (rr, cc) != (r, c) and 0 <= rr < n and 0 <= cc < n]
+                if sum(x == grid[r][c] for x in nb) < 2:
+                    new[r][c] = max(sorted(set(nb)), key=nb.count)
+        grid = new
+    rows = [r for r in range(n) if any(x != EMPTY for x in grid[r])]
+    cols = [c for c in range(n) if any(grid[r][c] != EMPTY for r in range(n))]
+    if not rows:
+        return PartsSprite(s.subject, grid, s.colors)
+    r0, r1, c0, c1 = rows[0], rows[-1], cols[0], cols[-1]
+    side = max(r1 - r0, c1 - c0) + 1
+    out = [[EMPTY] * side for _ in range(side)]
+    dr, dc = (side - (r1 - r0 + 1)) // 2, (side - (c1 - c0 + 1)) // 2
+    for r in range(r0, r1 + 1):
+        for c in range(c0, c1 + 1):
+            out[r - r0 + dr][c - c0 + dc] = grid[r][c]
+    return PartsSprite(s.subject, out, s.colors)
+
+
+async def paint_parts(
+    drex: Drex,
+    subject: str,
+    parts: list[Part],
+    *,
+    n: int = 16,
+    symmetric: bool = True,
+    model: str = "drex-max-v1.1",
+) -> PartsSprite:
+    half = n // 2 if symmetric else n
+    crit = {EMPTY: "background: no part of the subject is here"}
+    crit |= {p.name: p.description for p in parts}
+    where = (f"Row 0 is the top edge and row {n - 1} the bottom edge. Column 0 is the far left edge"
+             + (f" and column {half - 1} is just left of the vertical center line; the sprite is left-right "
+                f"symmetric, so describe the left half." if symmetric else f" and column {n - 1} the far right edge."))
+    qs: dict[str, dict] = {}
+    for r in range(n):
+        for c in range(half):
+            qs[f"p_{r:02d}_{c:02d}"] = choice(
+                f"Which part of the {subject} covers the pixel at row {r}, column {c}? {where}", crit)
+    palette = {k: None for k in PALETTE}
+    for i, p in enumerate(parts):
+        qs[f"color_{i}"] = choice(f"What color is the {subject}'s {p.name} ({p.description})?", palette)
+    state = (f"A {n}x{n} pixel-art sprite of {subject}, like a classic 8-bit video game icon: centered, filling most "
+             f"of the grid, bold and simple. It is made of these parts: "
+             + "; ".join(f"{p.name}: {p.description}" for p in parts) + ".")
+    ans = await drex.ask_many(state, qs, model=model)
+    grid, probs = [], []
+    for r in range(n):
+        row = [ans[f"p_{r:02d}_{c:02d}"]["choice"] for c in range(half)]
+        prow = [ans[f"p_{r:02d}_{c:02d}"]["probabilities"] for c in range(half)]
+        if symmetric:
+            row = row + row[::-1]
+            prow = prow + prow[::-1]
+        grid.append(row)
+        probs.append(prow)
+    colors = {p.name: ans[f"color_{i}"]["choice"] for i, p in enumerate(parts)}
+    return PartsSprite(subject, grid, colors, probs)
