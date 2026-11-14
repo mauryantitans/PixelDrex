@@ -126,14 +126,14 @@ flowchart TD
 | `pixeldrex/director.py` | idea → `SceneSpec` (title, scene, background, sprites with parts / symmetric / motion) |
 | `pixeldrex/parts.py` | `paint_parts` (part questions + colors), `smooth_upscale` (local edge questions), `paint_parts_res` (16 → 32 → 64 → 128), `tidy`, shading and outline rendering |
 | `pixeldrex/pixels.py` | `paint_background` (pixel × row fusion), `motion` (score questions), `compose`, `shade_background`, `scene_gif` (orchestrates everything in parallel), plus the earlier color-per-pixel painter kept for comparison |
-| `scripts/parts_test.py`, `scripts/parts32_test.py`, `scripts/parts_res_test.py` | the experiments behind the design (color vs parts, 16 vs 32, the 16 → 128 ladder) |
+| `scripts/experiments/parts_test.py`, `parts32_test.py`, `parts_res_test.py` | the experiments behind the design (color vs parts, 16 vs 32, the 16 → 128 ladder) |
 
 ### Known limits
 
 - Side-view subjects (a running cat, a jumping whale) come out blobby: symmetry and "which part" both work best for
   front views. The director prefers front views for this reason.
-- Large, detailed images painted pixel by pixel don't work — plain downscaling beat it (`scripts/big.py`,
-  `scripts/ref_test.py`). PixelDrex sticks to small iconic sprites.
+- Large, detailed images painted pixel by pixel don't work — plain downscaling beat it (`scripts/experiments/big.py`,
+  `scripts/experiments/ref_test.py`, [result](gallery/large_image_experiment.png)). PixelDrex sticks to small iconic sprites.
 
 ---
 
@@ -277,8 +277,9 @@ pixeldrex/          the package
   god.py            Intern god mode             cli.py      the commands
   web.py, web/      the web app
 worlds/             saved worlds
-scripts/            experiments, Intern runner, sample-PDF maker, demo-video recording and stitching
-bench/              side experiment: Drex vs LLMs writing pixel grids as text
+tests/              offline test suite (no API keys needed)
+scripts/            Intern runner, sample-PDF maker, demo-video recording and stitching
+  experiments/      the experiments behind the design (colors vs parts, 16 → 128, large images)
 intern_logs/        every Intern run
 docs/               SETUP, ARCHITECTURE, SUBMISSION, deck, video, gallery, sample PDF
 ```

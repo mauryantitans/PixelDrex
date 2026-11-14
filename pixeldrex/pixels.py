@@ -18,7 +18,7 @@ from typing import Callable
 
 from PIL import Image
 
-from pixeldrex.drex import Drex, choice, image_to_b64, noul, score
+from pixeldrex.drex import Drex, choice, image_to_b64, score
 
 PALETTE: dict[str, tuple[int, int, int]] = {
     "white": (255, 255, 255),
@@ -223,13 +223,13 @@ async def paint_tiled(
             f"This request paints ONE {tile}x{tile} tile of it: rows {r0}-{r0 + tile - 1} and columns "
             f"{c0}-{c0 + tile - 1} of the full image (the {_where(r0, c0, tile, n)} part). "
             + (
-                f"Image 1 is a zoom of exactly this tile from the reference picture. Pixel-art it: each pixel "
-                f"takes the palette color that best matches that spot of Image 1, with clean flat color areas. "
-                f"Image 2 is the whole reference picture with this tile outlined in red."
+                "Image 1 is a zoom of exactly this tile from the reference picture. Pixel-art it: each pixel "
+                "takes the palette color that best matches that spot of Image 1, with clean flat color areas. "
+                "Image 2 is the whole reference picture with this tile outlined in red."
                 if reference else
-                f"Image 1 is a blurry low-resolution zoom of exactly this tile: keep its layout and colors, "
-                f"but make the edges crisp and add fine detail that fits the subject. "
-                f"Image 2 is the whole low-resolution picture with this tile outlined in red."
+                "Image 1 is a blurry low-resolution zoom of exactly this tile: keep its layout and colors, "
+                "but make the edges crisp and add fine detail that fits the subject. "
+                "Image 2 is the whole low-resolution picture with this tile outlined in red."
             )
         )
         qs = {

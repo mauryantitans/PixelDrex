@@ -10,7 +10,6 @@ A world = a few cell states (each with a palette color) + rules in English + a s
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import random
 import re

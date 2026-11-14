@@ -1,17 +1,26 @@
 # PixelDrex
 
-> **GIFs made entirely of decisions.** Drex can't draw — it only answers multiple-choice questions. So we made every pixel a question, and turned the answers into animated GIFs.
+**GIFs made entirely of decisions.** Drex can't draw. It only answers multiple-choice questions, so every pixel of
+every frame is a question, and the answers become animated GIFs.
 
-Built at **Drexathon** (Nace AI, Nov 14 2026) · Track: 🎨 Wildcard
+[![CI](https://github.com/mauryantitans/PixelDrex/actions/workflows/ci.yml/badge.svg)](https://github.com/mauryantitans/PixelDrex/actions/workflows/ci.yml)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-📖 **Docs:** [Setup](docs/SETUP.md) · [How it works — Scenes and Drex Life architecture](docs/ARCHITECTURE.md) · [Submission](docs/SUBMISSION.md)
-
-🎥 **Backup demo video (2½ min):** [`docs/video/pixeldrex_demo.mp4`](docs/video/pixeldrex_demo.mp4) — live runs of the web app: a 32×32 rocket being painted part by part, then Drex Life: a forest fire (replayed world) and a wildfire world built from this week's news.
-
-<p>
-<img src="docs/gallery/ufo_64.gif" width="256" alt="a ufo abducting a cow, painted and animated by Drex (64x64 sprites)">
-<img src="docs/gallery/rocket.gif" width="256" alt="a rocket launching at night, painted and animated by Drex">
+<p align="center">
+<img src="docs/gallery/scenes/ghost.gif" width="200" alt="a ghost floating through a haunted house">
+<img src="docs/gallery/scenes/sapling.gif" width="200" alt="a sapling growing into a big tree">
+<img src="docs/gallery/scenes/butterfly.gif" width="200" alt="a butterfly flapping its wings">
+<img src="docs/gallery/scenes/rocket.gif" width="200" alt="a rocket launching into a starry night sky">
 </p>
+
+<p align="center">
+<a href="docs/SETUP.md">Setup</a> · <a href="docs/ARCHITECTURE.md">Architecture</a> ·
+<a href="CONTRIBUTING.md">Contributing</a> · <a href="docs/video/pixeldrex_demo.mp4">Demo video</a> ·
+<a href="docs/SUBMISSION.md">Drexathon submission</a>
+</p>
+
+Built at **Drexathon** (Nace AI, Nov 14 2026) for the Wildcard track.
 
 Two ways a decision model makes a GIF:
 
@@ -19,6 +28,17 @@ Two ways a decision model makes a GIF:
 - **🧬 Let it live (Drex Life) — the extension we built next.** Every pixel is a living agent: you describe a world; its laws of physics are plain English; every frame, every pixel asks Drex what it becomes next.
 
 Everything else picks or fixes what the GIF shows: **this week's news** (Keenable) or **any document** (NDI) can define a world, and in **god mode** Intern rewrites a dull world's rules until the GIF comes alive.
+
+## Gallery
+
+One sentence in, one GIF out: 32×32 sprites on a 64×64 canvas, rendered at 512 px. Each is the best of 3 runs.
+
+| | | | | |
+|:-:|:-:|:-:|:-:|:-:|
+| <img src="docs/gallery/scenes/ghost.gif" width="150" alt="a ghost floating through a haunted house"><br><sub>“a ghost floating through a haunted house”<br>572 decisions · 5.5 s</sub> | <img src="docs/gallery/scenes/rocket.gif" width="150" alt="a rocket launching into a starry night sky"><br><sub>“a rocket launching into a starry night sky”<br>880 decisions · 8.7 s</sub> | <img src="docs/gallery/scenes/ufo.gif" width="150" alt="a UFO hovering over a desert at night"><br><sub>“a UFO hovering over a desert at night”<br>819 decisions · 7.8 s</sub> | <img src="docs/gallery/scenes/balloon.gif" width="150" alt="a hot air balloon rising over green hills"><br><sub>“a hot air balloon rising over green hills”<br>560 decisions · 4.3 s</sub> | <img src="docs/gallery/scenes/jellyfish.gif" width="150" alt="a jellyfish drifting in the deep sea"><br><sub>“a jellyfish drifting in the deep sea”<br>744 decisions · 6.2 s</sub> |
+| <img src="docs/gallery/scenes/sapling.gif" width="150" alt="a sapling growing into a big tree"><br><sub>“a sapling growing into a big tree”<br>3 poses · 7.0 s</sub> | <img src="docs/gallery/scenes/butterfly.gif" width="150" alt="a butterfly flapping its wings in a flower garden"><br><sub>“a butterfly flapping its wings in a flower garden”<br>2 poses · 6.9 s</sub> | <img src="docs/gallery/scenes/candle.gif" width="150" alt="a candle flame flickering in a dark room"><br><sub>“a candle flame flickering in a dark room”<br>2 poses · 9.4 s</sub> | <img src="docs/gallery/scenes/pumpkin.gif" width="150" alt="a jack-o-lantern glowing on a porch at night"><br><sub>“a jack-o-lantern glowing on a porch at night”<br>2 poses · 11.3 s</sub> | <img src="docs/gallery/scenes/ball.gif" width="150" alt="a red ball bouncing on the ground"><br><sub>“a red ball bouncing on the ground”<br>squash & stretch · 4.3 s</sub> |
+
+Every GIF costs about 1¢ of Drex calls (5–9 calls each).
 
 ## 🎬 Paint it: scenes
 
@@ -56,13 +76,7 @@ looks closer to flat vector art. Choose with `--res 16|32|64|128` or the web app
 
 *Left: 64×64 sprites (11 Drex calls, 10 s). Right: 128×128 sprites (14 calls, 15 s). Both 512 px GIFs.*
 
-More scenes (front-facing subjects work best; the director now prefers them):
-
-<p>
-<img src="docs/gallery/balloon.gif" width="180" alt="a hot air balloon rising over green hills">
-<img src="docs/gallery/ghost.gif" width="180" alt="a ghost floating through a haunted house">
-<img src="docs/gallery/jellyfish.gif" width="180" alt="a jellyfish drifting in the deep sea">
-</p>
+3. **Motion** — one request per sprite asks "where is it, and how big, in each of 16 frames?" as `score` questions. Scores are **expected values**, so the motion comes out sub-pixel smooth. The same request also asks how the sprite is **tilted** (it leans into its motion) and its **shape** (stretched when fast, squashed when it lands) — classic cartoon squash and stretch, decided by Drex.
 
 **Things that change, not just move (poses).** Real GIFs change shape: wings flap, flames flicker, a sapling grows
 into a tree. The director can give a sprite 2–4 **poses** (same part names, different positions); Drex paints every
@@ -70,11 +84,10 @@ pose part by part with shared colors, all poses share one frame so nothing jumps
 **"which pose is the tree in during frame 7?"** for every frame.
 
 <p>
-<img src="docs/gallery/sapling_to_tree.gif" width="200" alt="a sapling growing into a big tree (3 poses)">
-<img src="docs/gallery/butterfly.gif" width="200" alt="a butterfly flapping its wings (2 poses)">
+<img src="docs/gallery/scenes/sapling.gif" width="200" alt="a sapling growing into a big tree (3 poses)">
+<img src="docs/gallery/scenes/butterfly.gif" width="200" alt="a butterfly flapping its wings (2 poses)">
+<img src="docs/gallery/scenes/candle.gif" width="200" alt="a candle flame flickering (2 poses)">
 </p>
-
-3. **Motion** — one request per sprite asks "where is it, and how big, in each of 16 frames?" as `score` questions. Scores are **expected values**, so the motion comes out sub-pixel smooth. The same request also asks how the sprite is **tilted** (it leans into its motion) and its **shape** (stretched when fast, squashed when it lands) — classic cartoon squash and stretch, decided by Drex.
 
 At the default 64×64: about 7–11 Drex calls · ~10 s · ~1¢ per 512 px GIF (32×32: 5–8 calls, 5–9 s). Nobody told the rocket to shrink as it flies away — Drex decided that. Front-view sprites come out best; side-view animals are still blobby, so the director prefers front views, keeps scenes to 1–2 sprites, and a nearly empty sprite is repainted once.
 
@@ -200,32 +213,35 @@ cp .env.example .env   # add NACE_API_KEY (console.nace.ai) and DEEPINFRA_API_KE
 
 The web app has both modes. In **Scene** (the default) you see the director's plan, each layer as it's painted, the motion paths Drex chose, and live decision/cost counters. In **Drex Life** you can describe a new world, build one from this week's news, or **replay a saved world** (one click, known-good rules, fresh Drex decisions), and watch it evolve frame by frame as Drex decides it, with live population bars for each state, the rules, and counters for cell decisions vs unique Drex questions. Everything lands in the gallery.
 
-## Layout
+## Development
 
-| Path | What |
-|---|---|
-| `pixeldrex/drex.py` | Async Drex client: typed questions, images, 8-in-flight limit, retries, cost/latency tracking |
-| `pixeldrex/life.py` | Drex Life: world design, seeding, per-situation questions with caching, probabilistic steps |
-| `pixeldrex/god.py` | God mode: Intern tunes a world's rules until it stays alive |
-| `pixeldrex/ndi.py` | NDI: upload or link a document, Extract actors and interactions with page citations, build a cited world |
-| `docs/samples/` | A 2-page scanned-style field report for the NDI demo |
-| `pixeldrex/news.py` | Keenable: search this week's news and read the top articles; build a world whose rules cite them |
-| `scripts/intern.sh`, `intern_logs/` | Run Intern headless on this repo; every Intern run's JSON events and reply |
-| `worlds/` | Saved worlds (rules in English) |
-| `pixeldrex/parts.py` | Sprites from part questions ("which part covers this pixel?"), symmetry, shading, and Drex edge smoothing to 32×32 |
-| `pixeldrex/pixels.py` | Scene engine: background fusion, motion, compositing (64×64 canvas, 512 px GIFs), plus the earlier color-per-pixel painter |
-| `pixeldrex/director.py` | Scene director: idea → scene spec JSON (DeepInfra LLM) |
-| `pixeldrex/llm.py` | DeepInfra client: chat, vision, FLUX images |
-| `pixeldrex/cli.py` | The `pixeldrex`, `pixeldrex life` and `pixeldrex god` commands; saves GIFs, frames, specs and stats to `out/gallery/` |
-| `pixeldrex/web.py`, `pixeldrex/web/index.html` | The web app (FastAPI + server-sent events): scenes, Drex Life, news worlds, saved-world replay |
-| `scripts/` | Experiments (parts vs colors, 16 vs 32, v1 per-frame painting, large images, background fusion, Life demos) and the demo-video builder |
-| `docs/deck/` | The pitch deck: built from the real runs (`build_assets.py`, `build_deck.py`) and imported into Adobe Express |
-| `docs/video/` | The backup demo video |
-| `docs/SETUP.md` | Full setup instructions |
-| `docs/ARCHITECTURE.md` | How Scenes and Drex Life work, with diagrams |
-| `docs/SUBMISSION.md` | The Drexathon submission text |
-| `bench/` | Side experiment: Drex vs LLMs writing pixel grids as text |
-| `PLAN.md` | The build plan written at 11:00 (this README describes what was actually built) |
+```bash
+.venv/bin/pip install -e ".[dev]"
+.venv/bin/pytest          # offline tests: no API keys or network needed
+.venv/bin/ruff check .
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Project layout
+
+```text
+pixeldrex/              the package
+  director.py           idea → scene spec (DeepInfra LLM)
+  parts.py              sprites from part questions, poses, Drex edge smoothing (16 → 128)
+  pixels.py             scene engine: background, motion (position, size, tilt, squash, pose), compositing
+  life.py               Drex Life: worlds, per-situation questions, probabilistic steps
+  news.py, ndi.py       worlds from this week's news (Keenable) or any document (NDI), with citations
+  god.py                god mode: Intern rewrites a world's rules until it comes alive
+  drex.py, llm.py       Drex and DeepInfra clients
+  cli.py, web.py, web/  the `pixeldrex` commands and the web app (FastAPI + server-sent events)
+worlds/                 saved worlds you can replay
+tests/                  offline test suite
+scripts/                Intern runner, sample-PDF maker, demo-video recording
+  experiments/          the experiments behind the design (colors vs parts, 16 → 128, large images)
+docs/                   setup, architecture, gallery, pitch deck, demo video, submission
+intern_logs/            every Intern run: JSON events and replies
+```
 
 ## License
 

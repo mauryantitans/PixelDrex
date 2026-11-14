@@ -1,10 +1,9 @@
 """Reference-guided big pixel art: FLUX reference -> Drex paints 64x64 tile by tile. Compare with plain quantization."""
 import asyncio, sys, time
 from pathlib import Path
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from PIL import Image
-import io
 from pixeldrex.drex import Drex
 from pixeldrex.llm import DeepInfra
 from pixeldrex.pixels import PALETTE, paint_tiled, cleanup

@@ -54,6 +54,6 @@ Drex can't draw. It only answers typed multiple-choice questions with calibrated
 
 ## Honest limits
 
-- Drex paints small, iconic subjects well; large detailed images pixel-by-pixel don't work (we tried — plain downscaling beat it; see `scripts/` and the gallery).
+- Drex paints small, iconic subjects well; large detailed images pixel-by-pixel don't work (we tried — plain downscaling beat it; see `scripts/experiments/` and `docs/gallery/large_image_experiment.png`).
 - Side-view animals (a running cat, a jumping whale) are still blobby; front-view subjects (rockets, UFOs, trees, houses, faces) come out best.
 - Not every world is interesting on the first try (rock-paper-scissors was noise; a world built straight from the sample PDF froze) — which is exactly what god mode is for, though it doesn't always hit its target (it reported missing one by 7 cells).

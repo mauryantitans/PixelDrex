@@ -1,6 +1,6 @@
 """Large pixel image with Drex: 16x16 -> 32x32 -> 64x64 (-> 128x128), tile by tile.
 
-Run: .venv/bin/python scripts/big.py "an orange fox face" --sizes 16 32 64 --name fox
+Run: .venv/bin/python scripts/experiments/big.py "an orange fox face" --sizes 16 32 64 --name fox
 """
 import argparse
 import asyncio
@@ -8,7 +8,7 @@ import sys
 import time
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from PIL import Image  # noqa: E402
