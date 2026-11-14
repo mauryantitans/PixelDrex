@@ -1,0 +1,44 @@
+# PixelDrex
+
+> **Every pixel is a decision.** Drex can't draw — it only answers multiple-choice questions. So we made every pixel a question.
+
+Built at **Drexathon** (Nace AI, Nov 14 2026) · Track: 🎨 Wildcard
+
+<p>
+<img src="docs/gallery/rocket.gif" width="200">
+<img src="docs/gallery/sunrise.gif" width="200">
+<img src="docs/gallery/heart.gif" width="200">
+</p>
+
+Each GIF above was painted and animated entirely by [Drex](https://console.nace.ai), Nace's decision model:
+
+1. **Background** — every pixel of a 16×16 grid is one `choice` question over a 14-color palette (256 questions = **one** request), then refined to 32×32 with the first pass as a guide image.
+2. **Sprite** — painted once; 5 extra variations are *sampled from Drex's own per-pixel probabilities* (no extra calls), and Drex Max looks at all 6 and picks the best.
+3. **Motion** — one request asks "where is the sprite, and how big, in each of 12 frames?" as `score` questions. Scores are **expected values**, so the motion comes out sub-pixel smooth.
+
+≈ 6 Drex calls · ≈ 1,600 decisions · 6–9 s · ≈ 1¢ per GIF. Nobody told the rocket to shrink as it flies away — Drex decided that.
+
+## Quick start
+
+```bash
+python -m venv .venv && .venv/bin/pip install -r requirements.txt
+cp .env.example .env   # add NACE_API_KEY (console.nace.ai) and DEEPINFRA_API_KEY
+.venv/bin/python scripts/scene.py rocket      # -> out/scenes/rocket.gif
+```
+
+## Layout
+
+| Path | What |
+|---|---|
+| `pixeldrex/drex.py` | Async Drex client: typed questions, images, 8-in-flight limit, retries, cost/latency tracking |
+| `pixeldrex/pixels.py` | The engine: paint, sample, judge, refine, tiled painting, motion, compositing |
+| `pixeldrex/llm.py` | DeepInfra client: chat (director / baseline), vision, FLUX images |
+| `scripts/scene.py` | Animated scenes (sunrise, rocket, heart, ball) |
+| `scripts/drex_gif.py` | v1: every pixel of every frame is a decision (flickery — kept for comparison) |
+| `PLAN.md` | Build plan for the hackathon |
+
+Work in progress — more soon.
+
+## License
+
+MIT
