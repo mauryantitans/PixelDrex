@@ -15,12 +15,12 @@ BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 REG = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
 CLIPS = [
-    ("demo_life_forest_fire.mp4", "Let it live: a forest fire",
-     "Every frame, every pixel asks Drex what it becomes. Rules are plain English."),
-    ("demo_life_news_wildfire.mp4", "Let it live: this week's wildfire news",
-     "Keenable searches and reads the articles; every rule cites its sources."),
     ("demo_scene_rocket.mp4", "Paint it: a rocket launching at night",
      "32x32 sprites: Drex decides which part covers every pixel, smooths every edge, and moves it."),
+    ("demo_life_forest_fire.mp4", "Then we let it live: a forest fire",
+     "Drex Life: every frame, every pixel asks Drex what it becomes. Rules are plain English."),
+    ("demo_life_news_wildfire.mp4", "Let it live: this week's wildfire news",
+     "Keenable searches and reads the articles; every rule cites its sources."),
 ]
 
 

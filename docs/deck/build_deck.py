@@ -79,8 +79,9 @@ S.append(slide(1,
     text(110, 500, 860, "Drex can't draw. It only answers multiple-choice questions — so every pixel of every "
                         "frame is a question, and the answers become animated GIFs.", 36, BODY, C["muted"], 400, 1.4) +
     text(110, 800, 900, "github.com/mauryantitans/PixelDrex", 32, DOT, C["teal"]) +
-    picture(1170, 150, 620, 620, "hero_fire.png", "forest fire painted by Drex") +
-    text(1170, 800, 620, "A forest fire nobody animated: 41,984 Drex decisions, 22 seconds, under 2¢.", 26, BODY,
+    picture(1170, 150, 620, 620, "hero_scene.png", "a ufo abducting a cow, painted and animated by Drex") +
+    text(1170, 800, 620, "“a ufo abducting a cow at night” — painted and animated by Drex: 1,046 decisions, "
+                         "9 seconds, under a cent.", 26, BODY,
          C["muted"], 400, 1.35)))
 
 # 2 — ask the right question
@@ -115,7 +116,7 @@ S.append(slide(3,
 
 # 4 — Drex Life
 S.append(slide(4,
-    kicker("LET IT LIVE · DREX LIFE") + title("EVERY PIXEL IS ALIVE", size=92) +
+    kicker("THEN WE LET IT LIVE · DREX LIFE") + title("EVERY PIXEL IS ALIVE", size=92) +
     text(110, 250, 1700, "Describe a world. A director writes its laws of physics in plain English. "
                          "Then every frame, every pixel asks Drex what it becomes.", 36, BODY, C["muted"], 400, 1.35) +
     picture(110, 370, 1700, 270, "strip_fire.png", "forest fire frames", border=False) +

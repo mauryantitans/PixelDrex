@@ -40,6 +40,7 @@ def key(gif: Path, frac: float, size: int) -> Image.Image:
 
 def main() -> None:
     key(G / "life_forest_fire.gif", 0.5, 640).save(OUT / "hero_fire.png")
+    key(G / "ufo.gif", 0.1, 640).save(OUT / "hero_scene.png")
     strip(G / "life_forest_fire.gif", 6, 270, end=0.9).save(OUT / "strip_fire.png")
     strip(G / "life_zombies.gif", 6, 270, end=0.9).save(OUT / "strip_zombies.png")
     strip(G / "ufo.gif", 5, 330).save(OUT / "strip_ufo.png")

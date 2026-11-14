@@ -4,16 +4,58 @@
 
 Built at **Drexathon** (Nace AI, Nov 14 2026) · Track: 🎨 Wildcard
 
-🎥 **Backup demo video (2½ min):** [`docs/video/pixeldrex_demo.mp4`](docs/video/pixeldrex_demo.mp4) — live runs of the web app: a forest fire (replayed world), a wildfire world built from this week's news, and a 32×32 rocket being painted part by part.
+🎥 **Backup demo video (2½ min):** [`docs/video/pixeldrex_demo.mp4`](docs/video/pixeldrex_demo.mp4) — live runs of the web app: a 32×32 rocket being painted part by part, then Drex Life: a forest fire (replayed world) and a wildfire world built from this week's news.
+
+<p>
+<img src="docs/gallery/ufo.gif" width="256" alt="a ufo abducting a cow, painted and animated by Drex">
+<img src="docs/gallery/rocket.gif" width="256" alt="a rocket launching at night, painted and animated by Drex">
+</p>
 
 Two ways a decision model makes a GIF:
 
-- **🎬 Paint it (Scenes)** — type an idea; Drex decides which part of each 32×32 sprite covers every pixel, what color each part is, and how everything moves. 512 px GIFs.
-- **🧬 Let it live (Drex Life)** — every pixel is a living agent. You describe a world; its laws of physics are plain English; every frame, every pixel asks Drex what it becomes next.
+- **🎬 Paint it (Scenes) — the main idea.** Type an idea; Drex decides which part of each 32×32 sprite covers every pixel, what color each part is, and how everything moves. 512 px GIFs.
+- **🧬 Let it live (Drex Life) — the extension we built next.** Every pixel is a living agent: you describe a world; its laws of physics are plain English; every frame, every pixel asks Drex what it becomes next.
 
 Everything else picks or fixes what the GIF shows: **this week's news** (Keenable) or **any document** (NDI) can define a world, and in **god mode** Intern rewrites a dull world's rules until the GIF comes alive.
 
-## 🧬 Let it live: Drex Life
+## 🎬 Paint it: scenes
+
+You type an idea. The director turns it into a scene spec (background, up to 3 sprites with their parts, how each moves). Then every visual decision is made by [Drex](https://console.nace.ai), Nace's decision model, on a 64×64 canvas:
+
+1. **Background** — every pixel of a 16×16 grid is one `choice` question over a 15-color palette, plus 16 "which color covers most of row r?" questions, all in **one** request. Each pixel takes the argmax of P(pixel) × P(row)^0.5, so calibrated row answers fill in areas the pixel answers are unsure about. Then it is enlarged to 32×32 and Drex smooths its edges (below).
+2. **Sprite — the right question.** Not "what color is pixel (8, 12)?" but **"which part of the rocket covers pixel (8, 12): nose cone, body, window, fins, flame or empty?"** — plus "what color is the nose cone?" for each part, all in **one** request. The director names each sprite's parts; symmetric sprites (rockets, UFOs, faces, trees) ask only the left half and mirror it. Each part is one solid color, shaded like pixel art (lit top-left edges, shadowed bottom-right) with an outline.
+
+<img src="docs/gallery/parts_vs_colors.png" width="720" alt="color-per-pixel sprites vs part-per-pixel sprites">
+
+*Top: asking for a color per pixel (best of 6 candidates). Bottom: asking which part covers each pixel — one call per sprite, 6 sprites in 2.5 s.*
+
+**32×32 sprites — local questions, not coordinates.** Asking about 32 rows directly gets noisy (Drex is good at local
+judgments, weak at exact positions), and a 16×16 guide image didn't help — Drex reinterpreted it. What works is the trick
+Drex Life uses: paint the clean 16×16 shape, enlarge it to 32×32, then let **every edge pixel ask Drex** *"I'm 'body';
+north: nose cone, east: empty, … which should I be so the outline is smooth?"* — no coordinates, identical neighbourhoods
+share one question, ~1 call per sprite. Backgrounds are smoothed the same way. Scenes are now a 64×64 canvas with 32×32
+sprites, rendered at 512 px.
+
+<img src="docs/gallery/sprites_16_vs_32.png" width="720" alt="16x16 sprites vs 32x32 sprites smoothed by Drex">
+
+*Top: 16×16. Bottom: the same shapes at 32×32, every edge pixel decided by Drex from its neighbourhood (6 sprites, 3.1 s).*
+
+3. **Motion** — one request per sprite asks "where is it, and how big, in each of 16 frames?" as `score` questions. Scores are **expected values**, so the motion comes out sub-pixel smooth.
+
+5–8 Drex calls · 5–9 s · < 1¢ per 512 px GIF. Nobody told the rocket to shrink as it flies away — Drex decided that. Front-view sprites come out best; side-view animals are still blobby.
+
+```text
+$ pixeldrex "a ufo abducting a cow at night"
+  [  4.4s] director: 'UFO Abducts Cow' with 2 sprite(s): UFO, Cow
+  [  6.6s] background painted (256 pixel decisions)
+  ...
+  GIF: out/gallery/20261114-210009-ufo-abducts-cow/anim.gif
+  1,046 Drex decisions in 8 calls · 8.9s total · Drex ≈ $0.0085 · director $0.00010
+```
+
+Options: `--frames N`, `--ms N`, `--no-outline`, `--spec-only` (show the director's plan), `--spec FILE` (re-paint a saved plan), `--json`.
+
+## 🧬 Let it live: Drex Life (the extension)
 
 <p>
 <img src="docs/gallery/life_forest_fire.gif" width="240" alt="forest fire">
@@ -109,60 +151,18 @@ Drex Life mode and the linked headlines appear under the rules.
 spreads. Right, "wildfire": reporting on New Hampshire's Wild River Fire → `forest with a fire neighbour often becomes
 fire [2, 3]`, `fire with a rain neighbour rarely becomes ash [1, 4]`.*
 
-## 🎬 Paint it: scenes
-
-<p>
-<img src="docs/gallery/ufo.gif" width="200">
-<img src="docs/gallery/rocket.gif" width="200">
-</p>
-
-You type an idea. The director turns it into a scene spec (background, up to 3 sprites with their parts, how each moves). Then every visual decision is made by [Drex](https://console.nace.ai), Nace's decision model, on a 64×64 canvas:
-
-1. **Background** — every pixel of a 16×16 grid is one `choice` question over a 15-color palette, plus 16 "which color covers most of row r?" questions, all in **one** request. Each pixel takes the argmax of P(pixel) × P(row)^0.5, so calibrated row answers fill in areas the pixel answers are unsure about. Then it is enlarged to 32×32 and Drex smooths its edges (below).
-2. **Sprite — the right question.** Not "what color is pixel (8, 12)?" but **"which part of the rocket covers pixel (8, 12): nose cone, body, window, fins, flame or empty?"** — plus "what color is the nose cone?" for each part, all in **one** request. The director names each sprite's parts; symmetric sprites (rockets, UFOs, faces, trees) ask only the left half and mirror it. Each part is one solid color, shaded like pixel art (lit top-left edges, shadowed bottom-right) with an outline.
-
-<img src="docs/gallery/parts_vs_colors.png" width="720" alt="color-per-pixel sprites vs part-per-pixel sprites">
-
-*Top: asking for a color per pixel (best of 6 candidates). Bottom: asking which part covers each pixel — one call per sprite, 6 sprites in 2.5 s.*
-
-**32×32 sprites — local questions, not coordinates.** Asking about 32 rows directly gets noisy (Drex is good at local
-judgments, weak at exact positions), and a 16×16 guide image didn't help — Drex reinterpreted it. What works is the trick
-Drex Life uses: paint the clean 16×16 shape, enlarge it to 32×32, then let **every edge pixel ask Drex** *"I'm 'body';
-north: nose cone, east: empty, … which should I be so the outline is smooth?"* — no coordinates, identical neighbourhoods
-share one question, ~1 call per sprite. Backgrounds are smoothed the same way. Scenes are now a 64×64 canvas with 32×32
-sprites, rendered at 512 px.
-
-<img src="docs/gallery/sprites_16_vs_32.png" width="720" alt="16x16 sprites vs 32x32 sprites smoothed by Drex">
-
-*Top: 16×16. Bottom: the same shapes at 32×32, every edge pixel decided by Drex from its neighbourhood (6 sprites, 3.1 s).*
-
-3. **Motion** — one request per sprite asks "where is it, and how big, in each of 16 frames?" as `score` questions. Scores are **expected values**, so the motion comes out sub-pixel smooth.
-
-5–8 Drex calls · 5–9 s · < 1¢ per 512 px GIF. Nobody told the rocket to shrink as it flies away — Drex decided that. Front-view sprites come out best; side-view animals are still blobby.
-
-```text
-$ pixeldrex "a ufo abducting a cow at night"
-  [  4.4s] director: 'UFO Abducts Cow' with 2 sprite(s): UFO, Cow
-  [  6.6s] background painted (256 pixel decisions)
-  ...
-  GIF: out/gallery/20261114-210009-ufo-abducts-cow/anim.gif
-  1,046 Drex decisions in 8 calls · 8.9s total · Drex ≈ $0.0085 · director $0.00010
-```
-
-Options: `--frames N`, `--ms N`, `--no-outline`, `--spec-only` (show the director's plan), `--spec FILE` (re-paint a saved plan), `--json`.
-
 ## Quick start
 
 ```bash
 python -m venv .venv && .venv/bin/pip install -e .
 cp .env.example .env   # add NACE_API_KEY (console.nace.ai) and DEEPINFRA_API_KEY
+.venv/bin/pixeldrex "a rocket launching at night" # a scene (the main idea)
 .venv/bin/pixeldrex life "a forest fire"        # Drex Life (a fresh world)
 .venv/bin/pixeldrex life --world worlds/forest-fire-cycle.json   # replay a known-good world
-.venv/bin/pixeldrex "a rocket launching at night" # a scene
 .venv/bin/pixeldrex-web                         # web app on http://127.0.0.1:8000
 ```
 
-The web app has both modes. In **Drex Life** you can describe a new world, build one from this week's news, or **replay a saved world** (one click, known-good rules, fresh Drex decisions), and watch it evolve frame by frame as Drex decides it, with live population bars for each state, the rules, and counters for cell decisions vs unique Drex questions. In **Scene** you see the director's plan, each layer as it's painted, the motion paths Drex chose, and live decision/cost counters. Everything lands in the gallery.
+The web app has both modes. In **Scene** (the default) you see the director's plan, each layer as it's painted, the motion paths Drex chose, and live decision/cost counters. In **Drex Life** you can describe a new world, build one from this week's news, or **replay a saved world** (one click, known-good rules, fresh Drex decisions), and watch it evolve frame by frame as Drex decides it, with live population bars for each state, the rules, and counters for cell decisions vs unique Drex questions. Everything lands in the gallery.
 
 ## Layout
 
