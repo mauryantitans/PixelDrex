@@ -13,6 +13,7 @@ import asyncio
 import json
 import os
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
@@ -23,6 +24,8 @@ from pixeldrex.life import design_world
 ROOT = Path(__file__).resolve().parent.parent
 SYSTEM2 = os.getenv("INTERN_SYSTEM2", "deepinfra/deepseek-ai/DeepSeek-V4-Pro")
 SYSTEM1 = os.getenv("INTERN_SYSTEM1", "drex-max-v1.1")
+# the same Python that runs PixelDrex, so the command works on macOS, Linux and Windows
+PIXELDREX = f'"{Path(sys.executable).as_posix()}" -m pixeldrex'
 
 
 def slugify(text: str) -> str:
@@ -36,7 +39,7 @@ are plain-English rules in `{world_file}` (JSON with keys title, states, rules, 
 decides what every cell becomes each step by reading those rules, so the rules are the only thing you control.
 
 Run the world with exactly this command (each run costs about one cent; run it at most {max_runs} times):
-    .venv/bin/pixeldrex life --world {world_file} --size {size} --steps {steps} --report
+    {PIXELDREX} life --world {world_file} --size {size} --steps {steps} --report
 
 It prints one JSON report: census_first and census_last (cells per state), extinct (states that died out),
 changed_cells_last_5_steps, and gif.

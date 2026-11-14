@@ -182,8 +182,29 @@ for f in out/videos/*.webm; do ffmpeg -y -i "$f" -c:v libx264 -pix_fmt yuv420p "
 | A Life world freezes or turns to noise | worlds vary by run: run it again, or replay one from `worlds/` |
 | NDI says `403` for a URL | that site blocks downloads; save the PDF and pass the local file instead |
 
-## Windows
+## Windows (PowerShell)
 
-Use `python -m venv .venv`, then `.venv\Scripts\pip install -e .`, and run `.venv\Scripts\pixeldrex ...` /
-`.venv\Scripts\pixeldrex-web`. Copy the env file with `copy .env.example .env`. Set the port with
-`set PORT=8001` before starting the web app.
+On Windows, Python is usually `python` (or `py`), not `python3`, and the environment's programs live in
+`.venv\Scripts\` instead of `.venv/bin/`. Run one command at a time:
+
+```powershell
+git clone https://github.com/mauryantitans/PixelDrex.git
+cd PixelDrex
+python --version                                   # must be 3.10+; if not found, try: py --version
+python -m venv .venv                               # or: py -m venv .venv
+.venv\Scripts\python.exe -m pip install -e .
+copy .env.example .env
+notepad .env                                       # fill in NACE_API_KEY and DEEPINFRA_API_KEY, save
+.venv\Scripts\pixeldrex.exe "a rocket launching at night" --spec-only
+.venv\Scripts\pixeldrex.exe "a rocket launching at night"
+.venv\Scripts\pixeldrex-web.exe                    # http://127.0.0.1:8000
+```
+
+Everything else in this guide works the same with `.venv\Scripts\pixeldrex.exe` in place of `.venv/bin/pixeldrex`,
+for example `.venv\Scripts\pixeldrex.exe life --world worlds\forest-fire-cycle.json`.
+
+- If `python` opens the Microsoft Store or is not found, install Python from python.org and tick
+  **"Add python.exe to PATH"**, then open a new PowerShell window.
+- Different port: `$env:PORT=8001; .venv\Scripts\pixeldrex-web.exe`
+- Update an existing clone: `git fetch origin; git reset --hard origin/main; .venv\Scripts\python.exe -m pip install -e .`
+- God mode: install `uv` (`pip install uv`), then `uv tool install "intern-agent @ git+https://github.com/nace-ai/intern"`.
