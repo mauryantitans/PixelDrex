@@ -123,9 +123,22 @@ async def seed(drex: Drex, world: World, n: int) -> list[list[str]]:
         )
         for r in range(n) for c in range(n)
     }
-    state = f"A {n}x{n} grid world: {world.title}. Starting layout: {world.start}."
+    names = ", ".join(world.names)
+    state = (f"A {n}x{n} grid world: {world.title}. Starting layout: {world.start}. "
+             f"Every state ({names}) appears somewhere at the start; the background state covers most cells, "
+             f"but the others form visible patches, clusters or lines.")
     ans = await drex.ask_many(state, qs)
-    return [[ans[f"c_{r:02d}_{c:02d}"]["choice"] for c in range(n)] for r in range(n)]
+    grid = [[ans[f"c_{r:02d}_{c:02d}"]["choice"] for c in range(n)] for r in range(n)]
+    counts: dict[str, int] = {}
+    for row in grid:
+        for x in row:
+            counts[x] = counts.get(x, 0) + 1
+    if max(counts.values()) > 0.97 * n * n:  # nearly empty world: nothing would happen, so reseed once
+        state += (" IMPORTANT: at least a fifth of the grid must NOT be the background state; put clear clusters "
+                  "of the other states in different parts of the grid.")
+        ans = await drex.ask_many(state, qs)
+        grid = [[ans[f"c_{r:02d}_{c:02d}"]["choice"] for c in range(n)] for r in range(n)]
+    return grid
 
 
 def neighbourhood(grid: list[list[str]], r: int, c: int) -> tuple[str, ...]:

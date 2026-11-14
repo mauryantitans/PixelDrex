@@ -4,6 +4,8 @@
 
 Built at **Drexathon** (Nace AI, Nov 14 2026) · Track: 🎨 Wildcard
 
+🎥 **Backup demo video (2 min):** [`docs/video/pixeldrex_demo.mp4`](docs/video/pixeldrex_demo.mp4) — live runs of the web app: a forest fire, a wildfire world built from this week's news, and a scene being painted.
+
 Two things you can do with it:
 
 - **🧬 Drex Life** — every pixel is a living agent. You describe a world; the laws of physics are written in plain English; every step, every cell asks Drex what it becomes next.
