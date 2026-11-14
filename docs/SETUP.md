@@ -1,7 +1,11 @@
 # Setup
 
 Everything you need to run PixelDrex from a fresh machine: the command line, the web app, Drex Life, news and
-document worlds, and god mode. Commands are for macOS / Linux; Windows notes are at the end.
+document worlds, and god mode.
+
+- **macOS / Linux:** follow sections 1–9 below.
+- **Windows:** jump to **[Windows setup (PowerShell)](#windows-setup-powershell)** — the same steps with Windows
+  commands.
 
 ## 1. Prerequisites
 
@@ -182,29 +186,132 @@ for f in out/videos/*.webm; do ffmpeg -y -i "$f" -c:v libx264 -pix_fmt yuv420p "
 | A Life world freezes or turns to noise | worlds vary by run: run it again, or replay one from `worlds/` |
 | NDI says `403` for a URL | that site blocks downloads; save the PDF and pass the local file instead |
 
-## Windows (PowerShell)
+## Windows setup (PowerShell)
 
-On Windows, Python is usually `python` (or `py`), not `python3`, and the environment's programs live in
-`.venv\Scripts\` instead of `.venv/bin/`. Run one command at a time:
+The same setup as above, with Windows commands. Two things differ from macOS / Linux:
+
+- Python is usually called **`python`** (or **`py`**), not `python3`.
+- Programs inside the virtual environment live in **`.venv\Scripts\`**, not `.venv/bin/`.
+
+Open **PowerShell** and paste **one command at a time** (don't paste error output back into the terminal).
+
+### W1. Install the prerequisites
+
+1. **Python 3.10 or newer** — check with:
+   ```powershell
+   python --version
+   ```
+   If that says it's not found or opens the Microsoft Store, try `py --version`. If neither works, install Python
+   from [python.org/downloads](https://www.python.org/downloads/), and on the first installer screen tick
+   **"Add python.exe to PATH"**. Then close and reopen PowerShell.
+2. **git** — check with `git --version`; if missing, install it from [git-scm.com](https://git-scm.com/download/win).
+3. **Keys:** a Nace console key and a DeepInfra key (see [Get the keys](#get-the-keys) above).
+
+### W2. Get the code
 
 ```powershell
+cd $HOME\Downloads
 git clone https://github.com/mauryantitans/PixelDrex.git
 cd PixelDrex
-python --version                                   # must be 3.10+; if not found, try: py --version
-python -m venv .venv                               # or: py -m venv .venv
-.venv\Scripts\python.exe -m pip install -e .
-copy .env.example .env
-notepad .env                                       # fill in NACE_API_KEY and DEEPINFRA_API_KEY, save
-.venv\Scripts\pixeldrex.exe "a rocket launching at night" --spec-only
-.venv\Scripts\pixeldrex.exe "a rocket launching at night"
-.venv\Scripts\pixeldrex-web.exe                    # http://127.0.0.1:8000
+dir
 ```
 
-Everything else in this guide works the same with `.venv\Scripts\pixeldrex.exe` in place of `.venv/bin/pixeldrex`,
-for example `.venv\Scripts\pixeldrex.exe life --world worlds\forest-fire-cycle.json`.
+`dir` should list `README.md`, `pyproject.toml` and the `pixeldrex` folder. If you already cloned it, just `cd` into
+that folder instead (don't clone again inside it).
 
-- If `python` opens the Microsoft Store or is not found, install Python from python.org and tick
-  **"Add python.exe to PATH"**, then open a new PowerShell window.
-- Different port: `$env:PORT=8001; .venv\Scripts\pixeldrex-web.exe`
-- Update an existing clone: `git fetch origin; git reset --hard origin/main; .venv\Scripts\python.exe -m pip install -e .`
-- God mode: install `uv` (`pip install uv`), then `uv tool install "intern-agent @ git+https://github.com/nace-ai/intern"`.
+### W3. Create the environment and install
+
+```powershell
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -e .
+```
+
+(Use `py -m venv .venv` if `python` isn't found.) This installs `pixeldrex.exe` and `pixeldrex-web.exe` into
+`.venv\Scripts\`.
+
+### W4. Add your keys
+
+```powershell
+copy .env.example .env
+notepad .env
+```
+
+In Notepad, fill in the two required lines, then save and close:
+
+```ini
+NACE_API_KEY=nace_sk_...
+DEEPINFRA_API_KEY=sk-di-...
+```
+
+### W5. Check it works
+
+```powershell
+.venv\Scripts\pixeldrex.exe "a rocket launching at night" --spec-only
+.venv\Scripts\pixeldrex.exe "a rocket launching at night"
+```
+
+The first prints the director's plan (DeepInfra only). The second paints the GIF in about 10 seconds and ends with
+`GIF: out/gallery/<run>/anim.gif` — open it with:
+
+```powershell
+explorer out\gallery
+```
+
+### W6. Run the web app
+
+```powershell
+.venv\Scripts\pixeldrex-web.exe
+```
+
+Open **http://127.0.0.1:8000** in your browser. Use the **Scene** tab's example buttons, and in the **Drex Life** tab
+click a saved world such as *Forest Fire Cycle*. Stop the server with **Ctrl+C**. To use another port:
+
+```powershell
+$env:PORT=8001; .venv\Scripts\pixeldrex-web.exe
+```
+
+### W7. Everything else
+
+```powershell
+.venv\Scripts\pixeldrex.exe "a ufo abducting a cow at night"
+.venv\Scripts\pixeldrex.exe life --world worlds\forest-fire-cycle.json
+.venv\Scripts\pixeldrex.exe life "a zombie outbreak in a city"
+.venv\Scripts\pixeldrex.exe life --news "wildfire"
+.venv\Scripts\pixeldrex.exe life --doc docs\samples\coral_reef_field_notes.pdf --save-world worlds\reef.json
+```
+
+### W8. God mode (optional)
+
+Needs Intern, which needs Python 3.12 or newer:
+
+```powershell
+.venv\Scripts\python.exe -m pip install uv
+.venv\Scripts\uv.exe tool install "intern-agent @ git+https://github.com/nace-ai/intern"
+intern --version
+.venv\Scripts\pixeldrex.exe god --world worlds\reef-from-field-notes.json
+```
+
+If `intern` isn't found after installing, run `.venv\Scripts\uv.exe tool update-shell`, then open a new PowerShell
+window.
+
+### W9. Update an existing clone
+
+```powershell
+git fetch origin
+git reset --hard origin/main
+.venv\Scripts\python.exe -m pip install -e .
+```
+
+### Windows troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `python3 is not recognized` | Windows uses `python` (or `py`) — see W1 |
+| `.venv/bin/pip is not recognized` | Windows uses `.venv\Scripts\` — see W3 |
+| `Cannot find path ...\PixelDrex\PixelDrex\PixelDrex` | you cloned inside the repo; `cd` to the folder that contains `pyproject.toml` |
+| `running scripts is disabled on this system` | you tried to *activate* the venv; you don't need to — call `.venv\Scripts\pixeldrex.exe` directly |
+| `NACE_API_KEY is not set` | `.env` is missing, or PowerShell isn't in the repo folder |
+| `address already in use` | another app has port 8000 — see W6 |
+| The GIF won't open in the browser | open it with Explorer (`explorer out\gallery`) or drag it into a browser tab |
+
+The general [Troubleshooting](#9-troubleshooting) table above applies too.
