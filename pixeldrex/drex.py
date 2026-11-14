@@ -8,6 +8,7 @@ Drex answers typed questions about a `state` with calibrated probabilities:
 Up to 512 questions and 8 images (Drex Max models only) per request.
 Free accounts may have 8 requests in flight, so calls go through a semaphore.
 """
+
 from __future__ import annotations
 
 import asyncio

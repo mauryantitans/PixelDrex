@@ -2,6 +2,7 @@
 
 Run: .venv/bin/python scripts/experiments/big.py "an orange fox face" --sizes 16 32 64 --name fox
 """
+
 import argparse
 import asyncio
 import sys
@@ -43,8 +44,10 @@ async def main() -> None:
         strip.paste(lv.flat(s // lv.n), (i * (s + 8), 0))
     strip.save(out / f"{name}_levels.png")
     u = drex.usage.summary()
-    print(f"{name}: sizes {args.sizes} in {dt:.1f}s, {u['calls']} Drex calls, {u['questions']} pixel decisions, "
-          f"{u['input_tokens']} tokens, ~${u['cost_usd']:.4f}")
+    print(
+        f"{name}: sizes {args.sizes} in {dt:.1f}s, {u['calls']} Drex calls, {u['questions']} pixel decisions, "
+        f"{u['input_tokens']} tokens, ~${u['cost_usd']:.4f}"
+    )
 
 
 if __name__ == "__main__":

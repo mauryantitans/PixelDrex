@@ -2,6 +2,7 @@
 
 Each page states different facts, so the world's rules cite different pages. NDI has to OCR it.
 """
+
 import textwrap
 from pathlib import Path
 
@@ -12,22 +13,28 @@ FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf"
 BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
 
 PAGES = [
-    ("Reef Station 7 — Field Notes, page 1", [
-        "Coral cover. Living coral colonies grow slowly outward and settle onto bare rock next to them. "
-        "A patch of bare rock surrounded by healthy coral is usually recolonised within a few seasons.",
-        "Heat stress. During a marine heatwave the water temperature rises above the bleaching threshold. "
-        "Warm water spreads quickly across the reef flat from one patch to the next.",
-        "Bleaching. Healthy coral sitting in warm water often expels its symbiotic algae and turns white "
-        "(bleached). Bleached coral is alive but starving.",
-    ]),
-    ("Reef Station 7 — Field Notes, page 2", [
-        "Recovery or death. If the warm water cools within a few weeks, bleached coral slowly recovers its colour. "
-        "If the heat persists, bleached coral dies and becomes bare skeleton.",
-        "Algae. Seaweed (macroalgae) grows fast over dead coral skeleton and bare rock, and can smother "
-        "nearby bleached coral.",
-        "Grazers. Parrotfish graze seaweed; where parrotfish are common, seaweed is cleared back to bare rock, "
-        "which gives new coral room to settle. Heatwaves eventually pass and the water cools.",
-    ]),
+    (
+        "Reef Station 7 — Field Notes, page 1",
+        [
+            "Coral cover. Living coral colonies grow slowly outward and settle onto bare rock next to them. "
+            "A patch of bare rock surrounded by healthy coral is usually recolonised within a few seasons.",
+            "Heat stress. During a marine heatwave the water temperature rises above the bleaching threshold. "
+            "Warm water spreads quickly across the reef flat from one patch to the next.",
+            "Bleaching. Healthy coral sitting in warm water often expels its symbiotic algae and turns white "
+            "(bleached). Bleached coral is alive but starving.",
+        ],
+    ),
+    (
+        "Reef Station 7 — Field Notes, page 2",
+        [
+            "Recovery or death. If the warm water cools within a few weeks, bleached coral slowly recovers its colour. "
+            "If the heat persists, bleached coral dies and becomes bare skeleton.",
+            "Algae. Seaweed (macroalgae) grows fast over dead coral skeleton and bare rock, and can smother "
+            "nearby bleached coral.",
+            "Grazers. Parrotfish graze seaweed; where parrotfish are common, seaweed is cleared back to bare rock, "
+            "which gives new coral room to settle. Heatwaves eventually pass and the water cools.",
+        ],
+    ),
 ]
 
 

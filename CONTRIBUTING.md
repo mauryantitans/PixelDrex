@@ -16,7 +16,7 @@ Windows (PowerShell) steps are in [docs/SETUP.md](docs/SETUP.md#windows-setup-po
 
 ```bash
 .venv/bin/pytest          # offline tests: no API keys or network needed
-.venv/bin/ruff check .    # lint
+.venv/bin/ruff check . && .venv/bin/ruff format --check .   # lint and format
 ```
 
 CI runs both on every push and pull request.

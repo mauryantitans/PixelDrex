@@ -4,6 +4,7 @@ Usage: .venv/bin/python scripts/make_demo_video.py out/videos docs/pixeldrex_dem
 Expects demo_life_forest_fire.mp4, demo_life_news_wildfire.mp4, demo_scene_ufo.mp4 in the input folder
 (recorded with Playwright from `pixeldrex-web`).
 """
+
 import subprocess
 import sys
 from pathlib import Path
@@ -15,12 +16,21 @@ BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 REG = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
 CLIPS = [
-    ("demo_scene_rocket.mp4", "Paint it: a rocket launching at night",
-     "32x32 sprites: Drex decides which part covers every pixel, smooths every edge, and moves it."),
-    ("demo_life_forest_fire.mp4", "Then we let it live: a forest fire",
-     "Drex Life: every frame, every pixel asks Drex what it becomes. Rules are plain English."),
-    ("demo_life_news_wildfire.mp4", "Let it live: this week's wildfire news",
-     "Keenable searches and reads the articles; every rule cites its sources."),
+    (
+        "demo_scene_rocket.mp4",
+        "Paint it: a rocket launching at night",
+        "32x32 sprites: Drex decides which part covers every pixel, smooths every edge, and moves it.",
+    ),
+    (
+        "demo_life_forest_fire.mp4",
+        "Then we let it live: a forest fire",
+        "Drex Life: every frame, every pixel asks Drex what it becomes. Rules are plain English.",
+    ),
+    (
+        "demo_life_news_wildfire.mp4",
+        "Let it live: this week's wildfire news",
+        "Keenable searches and reads the articles; every rule cites its sources.",
+    ),
 ]
 
 
@@ -49,7 +59,11 @@ def main() -> None:
     tmp.mkdir(exist_ok=True)
     parts = []
     intro = tmp / "card_0.png"
-    card(intro, "PixelDrex — GIFs made entirely of decisions", "Backup demo: live runs of the web app, recorded Nov 14 2026 at Drexathon.")
+    card(
+        intro,
+        "PixelDrex — GIFs made entirely of decisions",
+        "Backup demo: live runs of the web app, recorded Nov 14 2026 at Drexathon.",
+    )
     parts.append((intro, 3.0))
     for i, (clip, title, sub) in enumerate(CLIPS, 1):
         c = tmp / f"card_{i}.png"
@@ -62,12 +76,33 @@ def main() -> None:
             inputs += ["-loop", "1", "-t", str(dur), "-i", str(p)]
         else:
             inputs += ["-i", str(p)]
-        filters.append(f"[{k}:v]scale={W}:{H}:force_original_aspect_ratio=decrease,pad={W}:{H}:(ow-iw)/2:(oh-ih)/2,"
-                       f"fps=25,format=yuv420p,setsar=1[v{k}]")
+        filters.append(
+            f"[{k}:v]scale={W}:{H}:force_original_aspect_ratio=decrease,pad={W}:{H}:(ow-iw)/2:(oh-ih)/2,"
+            f"fps=25,format=yuv420p,setsar=1[v{k}]"
+        )
     concat = "".join(f"[v{k}]" for k in range(len(parts))) + f"concat=n={len(parts)}:v=1:a=0[out]"
-    run(["ffmpeg", "-loglevel", "error", "-y", *inputs, "-filter_complex", ";".join(filters) + ";" + concat,
-         "-map", "[out]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "24", "-movflags", "+faststart",
-         str(dst)])
+    run(
+        [
+            "ffmpeg",
+            "-loglevel",
+            "error",
+            "-y",
+            *inputs,
+            "-filter_complex",
+            ";".join(filters) + ";" + concat,
+            "-map",
+            "[out]",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "24",
+            "-movflags",
+            "+faststart",
+            str(dst),
+        ]
+    )
     print(dst)
 
 

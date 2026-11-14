@@ -2,6 +2,7 @@
 
 Run: .venv/bin/pixeldrex-web            (http://127.0.0.1:8000)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -58,8 +59,9 @@ def index() -> FileResponse:
 
 
 @app.get("/api/paint")
-async def paint(idea: str = Query(..., min_length=2, max_length=200), frames: int = Query(16, ge=4, le=32),
-                res: int = Query(64)):
+async def paint(
+    idea: str = Query(..., min_length=2, max_length=200), frames: int = Query(16, ge=4, le=32), res: int = Query(64)
+):
     if res not in (16, 32, 64, 128):
         return JSONResponse({"error": "res must be 16, 32, 64 or 128"}, status_code=422)
     queue: asyncio.Queue = asyncio.Queue()
@@ -87,8 +89,9 @@ async def paint(idea: str = Query(..., min_length=2, max_length=200), frames: in
             if not task.done():
                 await task
 
-    return StreamingResponse(stream(), media_type="text/event-stream",
-                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+    return StreamingResponse(
+        stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
 
 
 def _life_event(kind: str, payload: dict) -> dict:
@@ -100,9 +103,12 @@ def _life_event(kind: str, payload: dict) -> dict:
     buf = io.BytesIO()
     life.image(scale=10).save(buf, format="PNG")
     return {
-        "kind": "frame", "step": payload["step"], "elapsed": round(payload["elapsed"], 2),
+        "kind": "frame",
+        "step": payload["step"],
+        "elapsed": round(payload["elapsed"], 2),
         "img": "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode(),
-        "census": life.census(), "new_questions": info["new_questions"],
+        "census": life.census(),
+        "new_questions": info["new_questions"],
         "unique_questions": life.asked + len(life.grid) ** 2,
         "cell_decisions": len(life.grid) ** 2 * (payload["step"] + 1),
     }
@@ -116,8 +122,10 @@ FEATURED = ["forest-fire-cycle", "zombie-outbreak-city", "news-bird-flu", "news-
 def worlds() -> JSONResponse:
     """Saved worlds that can be replayed (known-good rules)."""
     out = []
-    names = sorted((p.stem for p in WORLDS.glob("*.json")), key=lambda n: (n not in FEATURED, FEATURED.index(n)
-                                                                            if n in FEATURED else 0, n))
+    names = sorted(
+        (p.stem for p in WORLDS.glob("*.json")),
+        key=lambda n: (n not in FEATURED, FEATURED.index(n) if n in FEATURED else 0, n),
+    )
     for name in names:
         try:
             w = json.loads((WORLDS / f"{name}.json").read_text())
@@ -128,8 +136,13 @@ def worlds() -> JSONResponse:
 
 
 @app.get("/api/life")
-async def life(idea: str = Query("", max_length=200), size: int = Query(32, ge=8, le=48),
-               steps: int = Query(40, ge=5, le=120), news: bool = False, world: str | None = None):
+async def life(
+    idea: str = Query("", max_length=200),
+    size: int = Query(32, ge=8, le=48),
+    steps: int = Query(40, ge=5, le=120),
+    news: bool = False,
+    world: str | None = None,
+):
     world_path = None
     if world:
         candidate = (WORLDS / f"{world}.json").resolve()
@@ -146,9 +159,15 @@ async def life(idea: str = Query("", max_length=200), size: int = Query(32, ge=8
     async def worker() -> None:
         try:
             async with _one_at_a_time:
-                stats = await run_life_saved(None if (news or world_path) else idea, size=size, steps=steps,
-                                             on_event=on_event, quiet=True, news=idea if news else None,
-                                             world_path=world_path)
+                stats = await run_life_saved(
+                    None if (news or world_path) else idea,
+                    size=size,
+                    steps=steps,
+                    on_event=on_event,
+                    quiet=True,
+                    news=idea if news else None,
+                    world_path=world_path,
+                )
             queue.put_nowait({"kind": "result", "stats": stats, "gif": _gif_url(stats)})
         except Exception as e:
             queue.put_nowait({"kind": "error", "message": f"{type(e).__name__}: {e}"[:400]})
@@ -165,8 +184,9 @@ async def life(idea: str = Query("", max_length=200), size: int = Query(32, ge=8
             if not task.done():
                 await task
 
-    return StreamingResponse(stream(), media_type="text/event-stream",
-                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+    return StreamingResponse(
+        stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
 
 
 @app.get("/api/gallery")
@@ -176,12 +196,18 @@ def gallery(limit: int = 60) -> JSONResponse:
         f = d / "stats.json"
         if d.is_dir() and f.exists() and (d / "anim.gif").exists():
             s = json.loads(f.read_text())
-            items.append({
-                "title": s["spec"]["title"], "idea": s.get("idea"), "gif": _gif_url(s),
-                "mode": s.get("mode", "scene"),
-                "decisions": s.get("cell_decisions", s["drex"]["questions"]), "calls": s["drex"]["calls"],
-                "seconds": s["seconds"], "cost": s["drex"]["cost_usd"],
-            })
+            items.append(
+                {
+                    "title": s["spec"]["title"],
+                    "idea": s.get("idea"),
+                    "gif": _gif_url(s),
+                    "mode": s.get("mode", "scene"),
+                    "decisions": s.get("cell_decisions", s["drex"]["questions"]),
+                    "calls": s["drex"]["calls"],
+                    "seconds": s["seconds"],
+                    "cost": s["drex"]["cost_usd"],
+                }
+            )
         if len(items) >= limit:
             break
     return JSONResponse(items)

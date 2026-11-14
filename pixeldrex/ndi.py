@@ -1,10 +1,11 @@
 """NDI (Nace Document Intelligence): turn any document into the laws of physics of a Drex Life world.
 
-  1. NDI Extract reads the document (a public URL or a local file we upload) and fills a schema:
-     the actors whose spread / growth / change it describes, and the interactions between them,
-     each with citations to the page it was read from.
-  2. The Life director turns those cited facts into states and rules; every rule ends with its source page.
+1. NDI Extract reads the document (a public URL or a local file we upload) and fills a schema:
+   the actors whose spread / growth / change it describes, and the interactions between them,
+   each with citations to the page it was read from.
+2. The Life director turns those cited facts into states and rules; every rule ends with its source page.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -30,7 +31,7 @@ WORLD_SCHEMA = {
             "type": "array",
             "maxItems": 5,
             "description": "The 3 to 5 kinds of things (organisms, people, materials, conditions or states) whose "
-                           "spread, growth, decline or transformation the document describes.",
+            "spread, growth, decline or transformation the document describes.",
             "items": {
                 "type": "object",
                 "properties": {
@@ -43,14 +44,17 @@ WORLD_SCHEMA = {
             "type": "array",
             "maxItems": 8,
             "description": "How one actor or state causes another to appear, spread, change, die or recover, "
-                           "as described in the document.",
+            "as described in the document.",
             "items": {
                 "type": "object",
                 "properties": {
                     "cause": {"type": "string", "description": "The actor or condition that acts."},
                     "effect": {"type": "string", "description": "What happens to what, in one short sentence."},
-                    "speed": {"type": "string", "enum": ["fast", "medium", "slow", "rare"],
-                              "description": "How quickly or how often this happens, per the document."},
+                    "speed": {
+                        "type": "string",
+                        "enum": ["fast", "medium", "slow", "rare"],
+                        "description": "How quickly or how often this happens, per the document.",
+                    },
                 },
             },
         },
@@ -64,8 +68,9 @@ class NDI:
         key = api_key or os.getenv("NACE_API_KEY")
         if not key:
             raise RuntimeError("NACE_API_KEY is not set")
-        self.http = httpx.AsyncClient(base_url=BASE, timeout=120,
-                                      headers={"Authorization": f"Bearer {key}", "X-Nace-Client": "pixeldrex/0.1"})
+        self.http = httpx.AsyncClient(
+            base_url=BASE, timeout=120, headers={"Authorization": f"Bearer {key}", "X-Nace-Client": "pixeldrex/0.1"}
+        )
 
     async def __aenter__(self) -> "NDI":
         return self
@@ -78,9 +83,12 @@ class NDI:
         p = Path(path)
         grant = (await self.http.post("/v1/documents/upload-grants", json={"path": p.name})).raise_for_status().json()
         async with httpx.AsyncClient(timeout=120) as up:
-            r = await up.post(grant["upload_url"], headers={"X-Upload-Token": grant["token"]},
-                              files={"file": (p.name, p.read_bytes())},
-                              data={"metadata": json.dumps({"path": p.name})})
+            r = await up.post(
+                grant["upload_url"],
+                headers={"X-Upload-Token": grant["token"]},
+                files={"file": (p.name, p.read_bytes())},
+                data={"metadata": json.dumps({"path": p.name})},
+            )
         r.raise_for_status()
         file_id = r.json()["result"]["file"]["file_id"]
         return {"type": "workspace_file", "workspace_id": grant["workspace_id"], "file_id": file_id}
@@ -129,7 +137,11 @@ def cited_facts(result: dict) -> dict:
     for i, a in enumerate(data.get("actors") or []):
         facts["actors"].append({**(a or {}), "pages": pages.get(f"/actors/{i}") or pages.get(f"/actors/{i}/name", [])})
     for i, x in enumerate(data.get("interactions") or []):
-        pg = pages.get(f"/interactions/{i}") or pages.get(f"/interactions/{i}/effect") or pages.get(f"/interactions/{i}/cause", [])
+        pg = (
+            pages.get(f"/interactions/{i}")
+            or pages.get(f"/interactions/{i}/effect")
+            or pages.get(f"/interactions/{i}/cause", [])
+        )
         facts["interactions"].append({**(x or {}), "pages": pg})
     return facts
 
@@ -143,12 +155,19 @@ async def world_from_document(doc: str, idea: str | None = None, on_line=None) -
             say(f"uploading {Path(doc).name} to NDI")
             src = await ndi.upload(doc)
         say("NDI is reading the document (extract with citations)")
-        result = await ndi.extract(src, WORLD_SCHEMA, instructions=(
-            "Focus on processes a grid simulation could show: spreading, growth, decay, infection, recovery, "
-            "competition. Use the document's own terms." + (f" The user is interested in: {idea}." if idea else "")))
+        result = await ndi.extract(
+            src,
+            WORLD_SCHEMA,
+            instructions=(
+                "Focus on processes a grid simulation could show: spreading, growth, decay, infection, recovery, "
+                "competition. Use the document's own terms." + (f" The user is interested in: {idea}." if idea else "")
+            ),
+        )
     facts = cited_facts(result)
-    say(f"NDI found {len(facts['actors'])} actors and {len(facts['interactions'])} interactions about "
-        f"'{facts.get('topic')}'")
+    say(
+        f"NDI found {len(facts['actors'])} actors and {len(facts['interactions'])} interactions about "
+        f"'{facts.get('topic')}'"
+    )
     prompt = (
         "Design the world from these facts, extracted with page citations from a document by NDI. Pick 4-5 cell "
         "states from the actors and conditions that matter most (a condition such as warm water or a predator "
@@ -156,7 +175,8 @@ async def world_from_document(doc: str, idea: str | None = None, on_line=None) -
         "defined. Base every rule on one or more of the interactions, and END each rule with its source page(s) "
         "in the form (p. 3) or (p. 3, 7). "
         + (f"The user's angle: {idea}. " if idea else "")
-        + "Facts:\n" + json.dumps(facts, indent=1)
+        + "Facts:\n"
+        + json.dumps(facts, indent=1)
     )
     async with DeepInfra() as di:
         text = await di.chat(prompt, system=DIRECTOR, max_tokens=900, temperature=0.4, json_mode=True)

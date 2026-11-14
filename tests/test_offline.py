@@ -71,8 +71,14 @@ def test_compose_applies_motion_tilt_squash_and_poses():
     background = Painting([[color] * 16 for _ in range(16)])
     sprite = PoseSprite(tidy_group([blob(16, 4, 11, 4, 11), blob(16, 2, 13, 6, 9)]), ["a", "b"])
     frames = 4
-    track = Track(xs=[10, 20, 30, 40], ys=[32] * 4, sizes=[16] * 4,
-                  tilts=[0, 10, -10, 0], squash=[0, 1, -1, 0], poses=[0, 1, 0, 1])
+    track = Track(
+        xs=[10, 20, 30, 40],
+        ys=[32] * 4,
+        sizes=[16] * 4,
+        tilts=[0, 10, -10, 0],
+        squash=[0, 1, -1, 0],
+        poses=[0, 1, 0, 1],
+    )
     out = compose(background, [(sprite, track)], frames, 8, canvas=64)
     assert len(out) == frames
     assert len({im.size for im in out}) == 1
@@ -87,16 +93,24 @@ def test_smooth_keeps_length_and_endpoints_bounded():
 
 
 def test_scene_spec_parses_poses():
-    spec = SceneSpec.from_dict({
-        "title": "Sapling",
-        "background": "a meadow",
-        "sprites": [{
-            "name": "tree", "look": "a small tree", "motion": "grows",
-            "parts": [{"name": "trunk", "where": "bottom"}, {"name": "leaves", "where": "top"}],
-            "poses": [{"name": "sapling", "parts": [{"name": "trunk", "where": "short"}]},
-                      {"name": "tree", "parts": [{"name": "trunk", "where": "tall"}]}],
-        }],
-    })
+    spec = SceneSpec.from_dict(
+        {
+            "title": "Sapling",
+            "background": "a meadow",
+            "sprites": [
+                {
+                    "name": "tree",
+                    "look": "a small tree",
+                    "motion": "grows",
+                    "parts": [{"name": "trunk", "where": "bottom"}, {"name": "leaves", "where": "top"}],
+                    "poses": [
+                        {"name": "sapling", "parts": [{"name": "trunk", "where": "short"}]},
+                        {"name": "tree", "parts": [{"name": "trunk", "where": "tall"}]},
+                    ],
+                }
+            ],
+        }
+    )
     assert [p["name"] for p in spec.sprites[0].poses] == ["sapling", "tree"]
     assert SceneSpec.from_dict(spec.to_dict()).sprites[0].poses == spec.sprites[0].poses
 

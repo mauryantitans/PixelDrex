@@ -1,4 +1,5 @@
 """DeepInfra client (OpenAI-compatible): System 2 writing, the LLM baseline, and FLUX images."""
+
 from __future__ import annotations
 
 import asyncio

@@ -1,4 +1,5 @@
 """16x16 vs 32x32 sprites from part questions, same subjects and parts."""
+
 import asyncio
 import sys
 import time
@@ -31,7 +32,11 @@ async def main() -> None:
     cell = 200
     sheet = Image.new("RGB", (len(SUBJECTS) * (cell + 10) + 10, 2 * (cell + 10) + 40), (24, 26, 40))
     d = ImageDraw.Draw(sheet)
-    d.text((10, 8), "top: 16x16 parts   bottom: 32x32 — Drex smooths every edge pixel from its neighbourhood", fill=(255, 204, 51))
+    d.text(
+        (10, 8),
+        "top: 16x16 parts   bottom: 32x32 — Drex smooths every edge pixel from its neighbourhood",
+        fill=(255, 204, 51),
+    )
     for i, (a, b) in enumerate(zip(s16, s32)):
         x = 10 + i * (cell + 10)
         sheet.paste(tidy(a).flat(1).resize((cell, cell), Image.NEAREST), (x, 30))

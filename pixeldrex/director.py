@@ -3,6 +3,7 @@
 The director never draws. It only decides *what* to paint (background, up to 3 sprites, how each moves)
 and rewrites the idea into simple, iconic subjects Drex paints well at 16x16.
 """
+
 from __future__ import annotations
 
 import json
@@ -77,11 +78,14 @@ class SceneSpec:
     @classmethod
     def from_dict(cls, d: dict) -> "SceneSpec":
         sprites = [
-            SpriteSpec(str(s.get("name", "sprite"))[:30], str(s.get("look", s.get("name", ""))),
-                       str(s.get("motion", "stays in the center")),
-                       parts=[p for p in (s.get("parts") or []) if isinstance(p, dict) and p.get("name")][:6],
-                       poses=[p for p in (s.get("poses") or []) if isinstance(p, dict) and p.get("parts")][:4],
-                       symmetric=bool(s.get("symmetric", True)))
+            SpriteSpec(
+                str(s.get("name", "sprite"))[:30],
+                str(s.get("look", s.get("name", ""))),
+                str(s.get("motion", "stays in the center")),
+                parts=[p for p in (s.get("parts") or []) if isinstance(p, dict) and p.get("name")][:6],
+                poses=[p for p in (s.get("poses") or []) if isinstance(p, dict) and p.get("parts")][:4],
+                symmetric=bool(s.get("symmetric", True)),
+            )
             for s in (d.get("sprites") or [])[:3]
             if isinstance(s, dict)
         ]

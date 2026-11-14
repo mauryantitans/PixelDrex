@@ -1,4 +1,5 @@
 """The same sprites at 16, 32, 64 and 128 pixels: one 16x16 part layout, then one Drex smoothing pass per doubling."""
+
 import asyncio
 import sys
 import time
@@ -38,15 +39,19 @@ async def main() -> None:
     cell = 256
     sheet = Image.new("RGB", (len(RES) * (cell + 10) + 10, len(names) * (cell + 10) + 40), (24, 26, 40))
     d = ImageDraw.Draw(sheet)
-    d.text((10, 10), "columns: 16, 32, 64, 128 px  (one 16x16 part layout, then a Drex edge-smoothing pass per doubling)",
-           fill=(255, 204, 51))
+    d.text(
+        (10, 10),
+        "columns: 16, 32, 64, 128 px  (one 16x16 part layout, then a Drex edge-smoothing pass per doubling)",
+        fill=(255, 204, 51),
+    )
     for r, (levels, _) in enumerate(results):
         for c, lv in enumerate(levels):
             img = tidy(lv, passes=0).image(shade=True, outline=True)
             base = Image.new("RGBA", img.size, (205, 210, 220, 255))
             base.alpha_composite(img)
-            sheet.paste(base.convert("RGB").resize((cell, cell), Image.NEAREST),
-                        (10 + c * (cell + 10), 35 + r * (cell + 10)))
+            sheet.paste(
+                base.convert("RGB").resize((cell, cell), Image.NEAREST), (10 + c * (cell + 10), 35 + r * (cell + 10))
+            )
     out = ROOT / "out" / "parts"
     out.mkdir(parents=True, exist_ok=True)
     sheet.save(out / "res_ladder.png")

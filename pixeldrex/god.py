@@ -7,6 +7,7 @@
 
 Run: pixeldrex god "a coral reef"
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -99,11 +100,23 @@ async def god(
 
     (ROOT / "intern_logs").mkdir(exist_ok=True)
     log_path = ROOT / "intern_logs" / f"{datetime.now():%Y%m%d-%H%M%S}-god-{slugify(original['title'])}.jsonl"
-    cmd = ["intern", "-p", "--json", "--system2", SYSTEM2, "--system1", SYSTEM1, "--max-turns", "40",
-           "--", god_task(world_file, size, steps, max_runs)]
+    cmd = [
+        "intern",
+        "-p",
+        "--json",
+        "--system2",
+        SYSTEM2,
+        "--system1",
+        SYSTEM1,
+        "--max-turns",
+        "40",
+        "--",
+        god_task(world_file, size, steps, max_runs),
+    ]
     say(f"Intern takes over as god (System 2 {SYSTEM2.split('/')[-1]}, System 1 {SYSTEM1})")
-    proc = await asyncio.create_subprocess_exec(*cmd, cwd=ROOT, env=os.environ.copy(),
-                                                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+    proc = await asyncio.create_subprocess_exec(
+        *cmd, cwd=ROOT, env=os.environ.copy(), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    )
     reports, final, run_end = [], "", {}
     with log_path.open("w") as log:
         assert proc.stdout is not None
@@ -113,7 +126,7 @@ async def god(
                 e = json.loads(raw)
             except json.JSONDecodeError:
                 continue
-            if (line := _brief(e)):
+            if line := _brief(e):
                 say(line)
             if e.get("type") == "tool_call_end":
                 content = e.get("content")
@@ -128,9 +141,11 @@ async def god(
                     except json.JSONDecodeError:
                         continue
                     reports.append(rep)
-                    say(f"world run #{len(reports)}: extinct={rep.get('extinct')}, "
+                    say(
+                        f"world run #{len(reports)}: extinct={rep.get('extinct')}, "
                         f"changed in last 5 steps={rep.get('changed_cells_last_5_steps')}, "
-                        f"final census={rep.get('census_last')}")
+                        f"final census={rep.get('census_last')}"
+                    )
             if e.get("type") == "run_end":
                 run_end, final = e, e.get("final_text", "")
     await proc.wait()

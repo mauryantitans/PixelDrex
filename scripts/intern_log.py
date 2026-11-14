@@ -1,4 +1,5 @@
 """Read Intern's JSON events from stdin: show tool calls and System 1 (Drex) activity live, print the final reply."""
+
 import json
 import sys
 
@@ -21,7 +22,11 @@ for line in sys.stdin:
     elif t == "run_end":
         final = e.get("final_text", "")
         s1 = e.get("system1") or {}
-        print(f"  [run_end] {e.get('reason')} after {e.get('turns')} turns, {e.get('duration_ms', 0) / 1000:.0f}s; "
-              f"System 1 (Drex) asks: {s1.get('asks')} ({', '.join(f'{k}×{v}' for k, v in summary.items())}), "
-              f"${s1.get('cost_usd', 0):.4f}", file=sys.stderr, flush=True)
+        print(
+            f"  [run_end] {e.get('reason')} after {e.get('turns')} turns, {e.get('duration_ms', 0) / 1000:.0f}s; "
+            f"System 1 (Drex) asks: {s1.get('asks')} ({', '.join(f'{k}×{v}' for k, v in summary.items())}), "
+            f"${s1.get('cost_usd', 0):.4f}",
+            file=sys.stderr,
+            flush=True,
+        )
 print(final)

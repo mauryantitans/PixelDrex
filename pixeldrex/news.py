@@ -5,6 +5,7 @@
   3. Drex decides every cell, every step.
 Keenable's keyless /public endpoints are used unless KEENABLE_API_KEY is set.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -33,8 +34,10 @@ async def search_news(topic: str, *, days: int = 7, k: int = 5) -> list[dict]:
     headers, search_path, _ = _paths()
     since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
     async with httpx.AsyncClient(base_url=API, timeout=30, headers=headers) as c:
-        r = await c.post(search_path, json={"query": f"{topic} news", "published_after": since,
-                                            "max_results": k, "snippet_max_length": 400})
+        r = await c.post(
+            search_path,
+            json={"query": f"{topic} news", "published_after": since, "max_results": k, "snippet_max_length": 400},
+        )
         r.raise_for_status()
     return r.json().get("results", [])
 
@@ -60,10 +63,16 @@ async def world_from_news(topic: str, *, days: int = 7, k: int = 5, read: int = 
     bodies = await asyncio.gather(*(fetch_article(r["url"]) for r in results[:read]))
     sources = []
     for i, r in enumerate(results, 1):
-        sources.append({
-            "n": i, "title": r.get("title"), "url": r.get("url"), "published_at": r.get("published_at"),
-            "snippet": r.get("snippet"), "text": bodies[i - 1] if i <= len(bodies) else None,
-        })
+        sources.append(
+            {
+                "n": i,
+                "title": r.get("title"),
+                "url": r.get("url"),
+                "published_at": r.get("published_at"),
+                "snippet": r.get("snippet"),
+                "text": bodies[i - 1] if i <= len(bodies) else None,
+            }
+        )
     for s in sources:
         say(f"[{s['n']}] {s['title']} ({(s['published_at'] or '')[:10]})" + (" — read in full" if s["text"] else ""))
     prompt = (
@@ -78,7 +87,12 @@ async def world_from_news(topic: str, *, days: int = 7, k: int = 5, read: int = 
         text = await di.chat(prompt, system=DIRECTOR, max_tokens=900, temperature=0.4, json_mode=True)
     m = re.search(r"\{.*\}", text, re.S)
     world = World.from_dict(json.loads(m.group(0) if m else text))
-    meta = {"topic": topic, "days": days,
-            "sources": [{k: s[k] for k in ("n", "title", "url", "published_at")} | {"read_in_full": bool(s["text"])}
-                        for s in sources]}
+    meta = {
+        "topic": topic,
+        "days": days,
+        "sources": [
+            {k: s[k] for k in ("n", "title", "url", "published_at")} | {"read_in_full": bool(s["text"])}
+            for s in sources
+        ],
+    }
     return world, meta

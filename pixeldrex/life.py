@@ -8,6 +8,7 @@ A world = a few cell states (each with a palette color) + rules in English + a s
        and answers are cached across steps, so the world gets faster as Drex learns its physics.
      - The next state is SAMPLED from Drex's calibrated probabilities, so "slowly regrows" really is slow.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,8 +24,16 @@ from pixeldrex.llm import DeepInfra
 from pixeldrex.pixels import PALETTE
 
 EDGE = "edge"
-DIRS = [("north-west", -1, -1), ("north", -1, 0), ("north-east", -1, 1), ("west", 0, -1),
-        ("east", 0, 1), ("south-west", 1, -1), ("south", 1, 0), ("south-east", 1, 1)]
+DIRS = [
+    ("north-west", -1, -1),
+    ("north", -1, 0),
+    ("north-east", -1, 1),
+    ("west", 0, -1),
+    ("east", 0, 1),
+    ("south-west", 1, -1),
+    ("south", 1, 0),
+    ("south-east", 1, 1),
+]
 
 
 @dataclass
@@ -52,8 +61,12 @@ class World:
         return (255, 0, 255)
 
     def to_dict(self) -> dict:
-        return {"title": self.title, "states": [asdict(s) for s in self.states], "rules": self.rules,
-                "start": self.start}
+        return {
+            "title": self.title,
+            "states": [asdict(s) for s in self.states],
+            "rules": self.rules,
+            "start": self.start,
+        }
 
     @classmethod
     def from_dict(cls, d: dict) -> "World":
@@ -67,8 +80,12 @@ class World:
             states.append(CellState(name, color if color in PALETTE else "gray", str(s.get("meaning", name))))
         if len(states) < 2:
             raise ValueError("a world needs at least 2 cell states")
-        return cls(str(d.get("title") or "Untitled world")[:60], states[:6], str(d.get("rules") or ""),
-                   str(d.get("start") or "random"))
+        return cls(
+            str(d.get("title") or "Untitled world")[:60],
+            states[:6],
+            str(d.get("rules") or ""),
+            str(d.get("start") or "random"),
+        )
 
 
 DIRECTOR = f"""You design tiny cellular-automaton worlds, like Conway's Game of Life but with rules in plain English.
@@ -122,12 +139,15 @@ async def seed(drex: Drex, world: World, n: int) -> list[list[str]]:
             f"(row 0 is the top, column 0 the left, the grid is {n}x{n})",
             _criteria(world),
         )
-        for r in range(n) for c in range(n)
+        for r in range(n)
+        for c in range(n)
     }
     names = ", ".join(world.names)
-    state = (f"A {n}x{n} grid world: {world.title}. Starting layout: {world.start}. "
-             f"Every state ({names}) appears somewhere at the start; the background state covers most cells, "
-             f"but the others form visible patches, clusters or lines.")
+    state = (
+        f"A {n}x{n} grid world: {world.title}. Starting layout: {world.start}. "
+        f"Every state ({names}) appears somewhere at the start; the background state covers most cells, "
+        f"but the others form visible patches, clusters or lines."
+    )
     ans = await drex.ask_many(state, qs)
     grid = [[ans[f"c_{r:02d}_{c:02d}"]["choice"] for c in range(n)] for r in range(n)]
     counts: dict[str, int] = {}
@@ -135,8 +155,10 @@ async def seed(drex: Drex, world: World, n: int) -> list[list[str]]:
         for x in row:
             counts[x] = counts.get(x, 0) + 1
     if max(counts.values()) > 0.97 * n * n:  # nearly empty world: nothing would happen, so reseed once
-        state += (" IMPORTANT: at least a fifth of the grid must NOT be the background state; put clear clusters "
-                  "of the other states in different parts of the grid.")
+        state += (
+            " IMPORTANT: at least a fifth of the grid must NOT be the background state; put clear clusters "
+            "of the other states in different parts of the grid."
+        )
         ans = await drex.ask_many(state, qs)
         grid = [[ans[f"c_{r:02d}_{c:02d}"]["choice"] for c in range(n)] for r in range(n)]
     return grid
@@ -179,7 +201,9 @@ def _question(world: World, key: tuple, directional: bool) -> dict:
     else:
         parts = [f"{v} {k}" for k, v in sorted(rest, key=lambda kv: -kv[1]) if k != EDGE]
         edges = dict(rest).get(EDGE, 0)
-        desc = f"Of its 8 neighbours: {', '.join(parts) or 'none'}" + (f" ({edges} are outside the world)." if edges else ".")
+        desc = f"Of its 8 neighbours: {', '.join(parts) or 'none'}" + (
+            f" ({edges} are outside the world)." if edges else "."
+        )
     return choice(
         f"This cell is currently {me}. {desc} Following the rules, what is this cell in the next step?",
         _criteria(world),
@@ -210,9 +234,11 @@ class Life:
 
     def _rules_state(self) -> str:
         legend = "; ".join(f"{s.name}: {s.meaning}" for s in self.world.states)
-        return (f"A cellular world simulation called '{self.world.title}'. Cell states: {legend}. "
-                f"'edge' means outside the world. Rules, applied to every cell at the same time each step:\n"
-                f"{self.world.rules}")
+        return (
+            f"A cellular world simulation called '{self.world.title}'. Cell states: {legend}. "
+            f"'edge' means outside the world. Rules, applied to every cell at the same time each step:\n"
+            f"{self.world.rules}"
+        )
 
     async def step(self, drex: Drex) -> dict:
         n = len(self.grid)
@@ -248,8 +274,13 @@ class Life:
         self.cell_updates += n * n
         self.census_history.append(self.census())
         self.changed_history.append(changed)
-        return {"step": self.steps, "new_questions": len(new), "cached": len(keys) - len(new),
-                "unique_situations": len(self.cache), "changed": changed}
+        return {
+            "step": self.steps,
+            "new_questions": len(new),
+            "cached": len(keys) - len(new),
+            "unique_situations": len(self.cache),
+            "changed": changed,
+        }
 
     def image(self, scale: int = 10, *, style: str = "tiles") -> Image.Image:
         """Render the grid. Drex decided every state; this only decides how a state looks:

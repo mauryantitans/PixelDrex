@@ -8,6 +8,7 @@ Pieces:
   motion()    -> one Drex call decides every frame's x/y/size via `score` questions (expected values = smooth)
   scene_gif() -> background layer + sprite layers + Drex-decided motion -> animated GIF
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -111,12 +112,16 @@ async def paint(
         f"Subject: {description}. Use bold, simple, recognizable shapes. "
     )
     if sprite:
-        state += (f"This is a sprite: draw only the subject, centered and filling most of the grid, and answer "
-                  f"'{TRANSPARENT}' for every background pixel. ")
+        state += (
+            f"This is a sprite: draw only the subject, centered and filling most of the grid, and answer "
+            f"'{TRANSPARENT}' for every background pixel. "
+        )
     images = None
     if guide is not None:
-        state += ("Image 1 is a rough low-resolution sketch of the same picture: keep its layout and colors, "
-                  "and add detail and cleaner edges.")
+        state += (
+            "Image 1 is a rough low-resolution sketch of the same picture: keep its layout and colors, "
+            "and add detail and cleaner edges."
+        )
         images = [png_b64(guide)]
     answers = await drex.ask_many(state, _pixel_questions(n, colors), images=images, model=model)
     grid = [[answers[f"p_{r:02d}_{c:02d}"]["choice"] for c in range(n)] for r in range(n)]
@@ -175,8 +180,12 @@ def cleanup(p: Painting, *, passes: int = 1, min_same: int = 2) -> Painting:
         new = [row[:] for row in grid]
         for r in range(n):
             for c in range(n):
-                nb = [grid[rr][cc] for rr in range(r - 1, r + 2) for cc in range(c - 1, c + 2)
-                      if (rr, cc) != (r, c) and 0 <= rr < n and 0 <= cc < n]
+                nb = [
+                    grid[rr][cc]
+                    for rr in range(r - 1, r + 2)
+                    for cc in range(c - 1, c + 2)
+                    if (rr, cc) != (r, c) and 0 <= rr < n and 0 <= cc < n
+                ]
                 if sum(x == grid[r][c] for x in nb) < min_same:
                     new[r][c] = max(set(nb), key=nb.count)
         grid = new
@@ -226,8 +235,8 @@ async def paint_tiled(
                 "Image 1 is a zoom of exactly this tile from the reference picture. Pixel-art it: each pixel "
                 "takes the palette color that best matches that spot of Image 1, with clean flat color areas. "
                 "Image 2 is the whole reference picture with this tile outlined in red."
-                if reference else
-                "Image 1 is a blurry low-resolution zoom of exactly this tile: keep its layout and colors, "
+                if reference
+                else "Image 1 is a blurry low-resolution zoom of exactly this tile: keep its layout and colors, "
                 "but make the edges crisp and add fine detail that fits the subject. "
                 "Image 2 is the whole low-resolution picture with this tile outlined in red."
             )
@@ -363,15 +372,26 @@ class Track:
 
 
 async def motion(
-    drex: Drex, scene: str, sprite_name: str, motion_desc: str, *, frames: int, canvas: int, steps: int = 11,
-    keep_inside: bool = True, poses: list[dict] | None = None,
+    drex: Drex,
+    scene: str,
+    sprite_name: str,
+    motion_desc: str,
+    *,
+    frames: int,
+    canvas: int,
+    steps: int = 11,
+    keep_inside: bool = True,
+    poses: list[dict] | None = None,
 ) -> Track:
     """One Drex call decides the sprite's position and size in every frame (score = expected value)."""
     pos_levels = [f"{round(i * (canvas - 1) / (steps - 1))}" for i in range(steps)]
-    x_levels = [f"column {v} ({'far left' if i == 0 else 'far right' if i == steps - 1 else 'between'})"
-                for i, v in enumerate(pos_levels)]
-    y_levels = [f"row {v} ({'top' if i == 0 else 'bottom' if i == steps - 1 else 'between'})"
-                for i, v in enumerate(pos_levels)]
+    x_levels = [
+        f"column {v} ({'far left' if i == 0 else 'far right' if i == steps - 1 else 'between'})"
+        for i, v in enumerate(pos_levels)
+    ]
+    y_levels = [
+        f"row {v} ({'top' if i == 0 else 'bottom' if i == steps - 1 else 'between'})" for i, v in enumerate(pos_levels)
+    ]
     size_levels = [
         "tiny (about 1/5 of the canvas width)",
         "small (about 1/3 of the canvas width)",
@@ -379,10 +399,20 @@ async def motion(
         "large (about 2/3 of the canvas width)",
         "huge (almost the whole canvas width)",
     ]
-    tilt_levels = ["leaning far to the left", "leaning a little to the left", "upright",
-                   "leaning a little to the right", "leaning far to the right"]
-    squash_levels = ["stretched tall and thin (moving fast)", "slightly stretched", "normal shape",
-                     "slightly squashed", "squashed flat and wide (landing or impact)"]
+    tilt_levels = [
+        "leaning far to the left",
+        "leaning a little to the left",
+        "upright",
+        "leaning a little to the right",
+        "leaning far to the right",
+    ]
+    squash_levels = [
+        "stretched tall and thin (moving fast)",
+        "slightly stretched",
+        "normal shape",
+        "slightly squashed",
+        "squashed flat and wide (landing or impact)",
+    ]
     qs: dict[str, dict] = {}
     for f in range(frames):
         when = f"in frame {f + 1} of {frames} ({f / max(frames - 1, 1):.0%} through the animation)"
@@ -392,12 +422,16 @@ async def motion(
         qs[f"t_{f:02d}"] = score(f"How is the {sprite_name} tilted {when}?", tilt_levels)
         qs[f"q_{f:02d}"] = score(f"What is the {sprite_name}'s shape {when}?", squash_levels)
         if poses:
-            qs[f"p_{f:02d}"] = choice(f"Which pose is the {sprite_name} in {when}?",
-                                      {f"pose_{i}": str(p.get("name") or f"pose {i + 1}") for i, p in enumerate(poses)})
-    state = (f"An animated {canvas}x{canvas} pixel-art scene: {scene}. The {sprite_name} moves like this: "
-             f"{motion_desc}. Row 0 is the top of the canvas and column 0 is the left edge. Animate it like a "
-             f"cartoon animator: it leans into the direction it moves, stretches when moving fast, squashes when "
-             f"it lands, hits something or pushes off, and stays upright and normal when it is still.")
+            qs[f"p_{f:02d}"] = choice(
+                f"Which pose is the {sprite_name} in {when}?",
+                {f"pose_{i}": str(p.get("name") or f"pose {i + 1}") for i, p in enumerate(poses)},
+            )
+    state = (
+        f"An animated {canvas}x{canvas} pixel-art scene: {scene}. The {sprite_name} moves like this: "
+        f"{motion_desc}. Row 0 is the top of the canvas and column 0 is the left edge. Animate it like a "
+        f"cartoon animator: it leans into the direction it moves, stretches when moving fast, squashes when "
+        f"it lands, hits something or pushes off, and stays upright and normal when it is still."
+    )
     r = await drex.ask(state, qs)
     to_px = (canvas - 1) / (steps - 1)
     size_px = [0.2, 0.35, 0.5, 0.65, 0.85]  # fraction of canvas
@@ -529,15 +563,27 @@ async def scene_gif(
         emit(kind, {**payload, "result": result})
         return result
 
-    bg_desc = (f"background scenery only, with no characters or objects in front: {background}. "
-               f"Use large flat areas of color.")
+    bg_desc = (
+        f"background scenery only, with no characters or objects in front: {background}. Use large flat areas of color."
+    )
     bg_task = tagged("background", {}, paint_background(drex, bg_desc, n=16, row_weight=row_weight))
-    from pixeldrex.parts import (Part, PartsSprite, PoseSprite, paint_parts, paint_parts_res, smooth_upscale,
-                                 tidy, tidy_group)
+    from pixeldrex.parts import (
+        Part,
+        PartsSprite,
+        PoseSprite,
+        paint_parts,
+        paint_parts_res,
+        smooth_upscale,
+        tidy,
+        tidy_group,
+    )
 
     def to_parts(items: list[dict]) -> list[Part]:
-        return [Part(str(p.get("name", "part"))[:30], str(p.get("where") or p.get("description") or ""))
-                for p in items[:6] if isinstance(p, dict)]
+        return [
+            Part(str(p.get("name", "part"))[:30], str(p.get("where") or p.get("description") or ""))
+            for p in items[:6]
+            if isinstance(p, dict)
+        ]
 
     async def pose_painting(s: SpriteSpec):
         """Sprites that change shape: paint every pose with the first pose's colors, then share one frame."""
@@ -545,18 +591,29 @@ async def scene_gif(
         poses = [p for p in s.poses[:4] if to_parts(p.get("parts") or [])]
         res = max(sprite_px, 16)
         first = await paint_parts_res(drex, subject, to_parts(poses[0]["parts"]), res=res, symmetric=s.symmetric)
-        rest = await asyncio.gather(*(
-            paint_parts_res(drex, f"{subject}, pose: {p.get('name', '')}", to_parts(p["parts"]), res=res,
-                            symmetric=s.symmetric, colors=first.colors)
-            for p in poses[1:]))
+        rest = await asyncio.gather(
+            *(
+                paint_parts_res(
+                    drex,
+                    f"{subject}, pose: {p.get('name', '')}",
+                    to_parts(p["parts"]),
+                    res=res,
+                    symmetric=s.symmetric,
+                    colors=first.colors,
+                )
+                for p in poses[1:]
+            )
+        )
         return PoseSprite(tidy_group([first, *rest]), [str(p.get("name", "")) for p in poses])
 
     async def sprite_painting(s: SpriteSpec):
         if len(s.poses) >= 2:
             return await pose_painting(s)
         if s.parts:
-            parts = [Part(str(p.get("name", "part"))[:30], str(p.get("where") or p.get("description") or ""))
-                     for p in s.parts[:6]]
+            parts = [
+                Part(str(p.get("name", "part"))[:30], str(p.get("where") or p.get("description") or ""))
+                for p in s.parts[:6]
+            ]
             subject = f"{s.name} ({s.look})"
 
             async def once(symmetric: bool):
@@ -576,15 +633,25 @@ async def scene_gif(
     sprite_tasks = [tagged("sprite", {"name": s.name}, sprite_painting(s)) for s in sprites]
     others = ", ".join(f"the {s.name} ({s.motion})" for s in sprites)
     motion_tasks = [
-        tagged("motion", {"name": s.name},
-               motion(drex, f"{scene}; in it: {others}", s.name, s.motion, frames=frames, canvas=canvas,
-                      poses=s.poses if len(s.poses) >= 2 else None))
+        tagged(
+            "motion",
+            {"name": s.name},
+            motion(
+                drex,
+                f"{scene}; in it: {others}",
+                s.name,
+                s.motion,
+                frames=frames,
+                canvas=canvas,
+                poses=s.poses if len(s.poses) >= 2 else None,
+            ),
+        )
         for s in sprites
     ]
     bg16, *rest = await asyncio.gather(bg_task, *sprite_tasks, *motion_tasks)
     bg16 = cleanup(bg16, passes=2)
     sprite_ps = list(rest[: len(sprites)])
-    tracks = rest[len(sprites):]
+    tracks = rest[len(sprites) :]
     if canvas >= 64:  # Drex smooths the background's edges too, up to half the canvas (rounded hills, no blocks)
         smooth = PartsSprite(background, bg16.grid, {})
         while smooth.n < canvas // 2:
@@ -594,8 +661,9 @@ async def scene_gif(
         bg = bg16
     else:
         bg = cleanup(await refine(drex, bg_desc, bg16, n=canvas), passes=2)
-    frames_out = compose(bg, list(zip(sprite_ps, tracks)), frames, scale=max(1, 512 // canvas),
-                         canvas=canvas, outline=outline)
+    frames_out = compose(
+        bg, list(zip(sprite_ps, tracks)), frames, scale=max(1, 512 // canvas), canvas=canvas, outline=outline
+    )
     meta = {"background16": bg16, "background": bg, "sprites": sprite_ps, "tracks": tracks}
     emit("done", {"frames": len(frames_out)})
     return frames_out, meta

@@ -7,6 +7,7 @@ One Drex request per sprite:
 Parts are semantic, so the model reasons about where a nose cone or a flame goes; each part gets one solid color,
 then the renderer adds classic pixel-art shading (lit top-left edges, shadowed bottom-right edges) and an outline.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -89,8 +90,12 @@ def tidy(s: PartsSprite, passes: int = 1) -> PartsSprite:
         new = [row[:] for row in grid]
         for r in range(n):
             for c in range(n):
-                nb = [grid[rr][cc] for rr in range(r - 1, r + 2) for cc in range(c - 1, c + 2)
-                      if (rr, cc) != (r, c) and 0 <= rr < n and 0 <= cc < n]
+                nb = [
+                    grid[rr][cc]
+                    for rr in range(r - 1, r + 2)
+                    for cc in range(c - 1, c + 2)
+                    if (rr, cc) != (r, c) and 0 <= rr < n and 0 <= cc < n
+                ]
                 if sum(x == grid[r][c] for x in nb) < 2:
                     new[r][c] = max(sorted(set(nb)), key=nb.count)
         grid = new
@@ -124,29 +129,38 @@ async def paint_parts(
     half = n // 2 if symmetric else n
     crit = {EMPTY: "background: no part of the subject is here"}
     crit |= {p.name: p.description for p in parts}
-    where = (f"Row 0 is the top edge and row {n - 1} the bottom edge. Column 0 is the far left edge"
-             + (f" and column {half - 1} is just left of the vertical center line; the sprite is left-right "
-                f"symmetric, so describe the left half." if symmetric else f" and column {n - 1} the far right edge."))
+    where = f"Row 0 is the top edge and row {n - 1} the bottom edge. Column 0 is the far left edge" + (
+        f" and column {half - 1} is just left of the vertical center line; the sprite is left-right "
+        f"symmetric, so describe the left half."
+        if symmetric
+        else f" and column {n - 1} the far right edge."
+    )
     qs: dict[str, dict] = {}
     for r in range(n):
         for c in range(half):
             qs[f"p_{r:02d}_{c:02d}"] = choice(
-                f"Which part of the {subject} covers the pixel at row {r}, column {c}? {where}", crit)
+                f"Which part of the {subject} covers the pixel at row {r}, column {c}? {where}", crit
+            )
     palette = {k: None for k in PALETTE}
     if guide is None and colors is None:
         for i, p in enumerate(parts):
             qs[f"color_{i}"] = choice(f"What color is the {subject}'s {p.name} ({p.description})?", palette)
-    state = (f"A {n}x{n} pixel-art sprite of {subject}, like a classic 8-bit video game icon: centered, filling most "
-             f"of the grid, bold and simple. It is made of these parts: "
-             + "; ".join(f"{p.name}: {p.description}" for p in parts) + ".")
+    state = (
+        f"A {n}x{n} pixel-art sprite of {subject}, like a classic 8-bit video game icon: centered, filling most "
+        f"of the grid, bold and simple. It is made of these parts: "
+        + "; ".join(f"{p.name}: {p.description}" for p in parts)
+        + "."
+    )
     images = None
     if guide is not None:
         from pixeldrex.pixels import png_b64
 
         legend = ", ".join(f"{p.name} = {guide.colors.get(p.name, '?')}" for p in parts)
-        state += (f" Image 1 is a rough {guide.n}x{guide.n} version of exactly this sprite, in the same position "
-                  f"(colors: {legend}; the gray background is empty). Keep its layout, shapes and proportions, "
-                  f"and at {n}x{n} make the edges smoother and add small details.")
+        state += (
+            f" Image 1 is a rough {guide.n}x{guide.n} version of exactly this sprite, in the same position "
+            f"(colors: {legend}; the gray background is empty). Keep its layout, shapes and proportions, "
+            f"and at {n}x{n} make the edges smoother and add small details."
+        )
         images = [png_b64(guide.flat(1, bg=(205, 210, 220), shade=False, outline=False), upscale_to=512)]
     ans = await drex.ask_many(state, qs, model=model, images=images)
     grid, probs = [], []
@@ -167,12 +181,27 @@ async def paint_parts(
     return PartsSprite(subject, grid, colors, probs)
 
 
-_DIRS8 = [("north-west", -1, -1), ("north", -1, 0), ("north-east", -1, 1), ("west", 0, -1),
-          ("east", 0, 1), ("south-west", 1, -1), ("south", 1, 0), ("south-east", 1, 1)]
+_DIRS8 = [
+    ("north-west", -1, -1),
+    ("north", -1, 0),
+    ("north-east", -1, 1),
+    ("west", 0, -1),
+    ("east", 0, 1),
+    ("south-west", 1, -1),
+    ("south", 1, 0),
+    ("south-east", 1, 1),
+]
 
 
-async def smooth_upscale(drex: Drex, s: PartsSprite, *, symmetric: bool = True, passes: int = 1,
-                         model: str = "drex-max-v1.1", clamp_edges: bool = False) -> PartsSprite:
+async def smooth_upscale(
+    drex: Drex,
+    s: PartsSprite,
+    *,
+    symmetric: bool = True,
+    passes: int = 1,
+    model: str = "drex-max-v1.1",
+    clamp_edges: bool = False,
+) -> PartsSprite:
     """Double the resolution, then let Drex decide every edge pixel from its local neighbourhood only:
     "this pixel is 'body'; north: nose cone, east: empty, ... which part should it be so the outline is smooth?"
     No coordinates are asked (Drex is good at local judgments, weak at exact positions). Identical neighbourhoods
@@ -208,9 +237,13 @@ async def smooth_upscale(drex: Drex, s: PartsSprite, *, symmetric: bool = True, 
             qs[f"k{i:04d}"] = choice(
                 f"This pixel is currently '{me}'. Around it: {around}. To make every shape's outline smooth and "
                 f"natural (rounded curves and clean diagonals, no jagged stair steps or stray pixels), which should "
-                f"this pixel be?", crit)
-        state = (f"Smoothing a {n}x{n} pixel-art sprite of {s.subject} that was just enlarged from {s.n}x{s.n}, so "
-                 f"its edges are blocky 2x2 stair steps. Each question is about one edge pixel and its 8 neighbours.")
+                f"this pixel be?",
+                crit,
+            )
+        state = (
+            f"Smoothing a {n}x{n} pixel-art sprite of {s.subject} that was just enlarged from {s.n}x{s.n}, so "
+            f"its edges are blocky 2x2 stair steps. Each question is about one edge pixel and its 8 neighbours."
+        )
         ans = await drex.ask_many(state, qs, model=model)
         new = [row[:] for row in grid]
         for i, k in enumerate(key_list):
@@ -220,7 +253,7 @@ async def smooth_upscale(drex: Drex, s: PartsSprite, *, symmetric: bool = True, 
         grid = new
         if symmetric:
             for r in range(n):
-                grid[r][n // 2:] = grid[r][: n // 2][::-1]
+                grid[r][n // 2 :] = grid[r][: n // 2][::-1]
     return PartsSprite(s.subject, grid, dict(s.colors))
 
 
@@ -230,8 +263,15 @@ async def paint_parts_32(drex: Drex, subject: str, parts: list[Part], *, symmetr
     return await smooth_upscale(drex, coarse, symmetric=symmetric)
 
 
-async def paint_parts_res(drex: Drex, subject: str, parts: list[Part], *, res: int = 32,
-                          symmetric: bool = True, colors: dict[str, str] | None = None) -> PartsSprite:
+async def paint_parts_res(
+    drex: Drex,
+    subject: str,
+    parts: list[Part],
+    *,
+    res: int = 32,
+    symmetric: bool = True,
+    colors: dict[str, str] | None = None,
+) -> PartsSprite:
     """Any power-of-two resolution >= 16: the 16x16 part layout, then one Drex edge-smoothing pass per doubling
     (16 -> 32 -> 64 -> 128). Each pass only asks local questions, so edges get smoother and curves rounder;
     the detail itself comes from the 16x16 layout."""
@@ -268,13 +308,18 @@ class PoseSprite:
 
 def tidy_group(sprites: list[PartsSprite]) -> list[PartsSprite]:
     """tidy() each pose, but crop all of them to the union of their extents so they share one frame."""
+
     def destray(s: PartsSprite) -> PartsSprite:
         g, n = s.grid, s.n
         new = [row[:] for row in g]
         for r in range(n):
             for c in range(n):
-                nb = [g[rr][cc] for rr in range(r - 1, r + 2) for cc in range(c - 1, c + 2)
-                      if (rr, cc) != (r, c) and 0 <= rr < n and 0 <= cc < n]
+                nb = [
+                    g[rr][cc]
+                    for rr in range(r - 1, r + 2)
+                    for cc in range(c - 1, c + 2)
+                    if (rr, cc) != (r, c) and 0 <= rr < n and 0 <= cc < n
+                ]
                 if sum(x == g[r][c] for x in nb) < 2:
                     new[r][c] = max(sorted(set(nb)), key=nb.count)
         return PartsSprite(s.subject, new, s.colors)
