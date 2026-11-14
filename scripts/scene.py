@@ -35,6 +35,17 @@ SCENES = {
         sprites=[SpriteSpec("rocket", "a white rocket with a red nose cone and an orange flame at the bottom",
                             "launches from the ground at the bottom center and flies straight up and out of the top")],
     ),
+    "birds": dict(
+        scene="a sunny day over the sea",
+        background="a light blue sky above a dark blue sea, the horizon a little below the middle",
+        sprites=[
+            SpriteSpec("sun", "a round yellow sun", "sits still in the top right corner of the sky"),
+            SpriteSpec("bird", "a white seagull with wide spread wings, small in the sky",
+                       "flies across the sky from the far left to the far right, gently rising and falling"),
+            SpriteSpec("boat", "a sailboat: a red hull with a big white triangular sail",
+                       "drifts slowly along the horizon from the right side toward the center"),
+        ],
+    ),
     "heart": dict(
         scene="a beating heart",
         background="a soft pink background",
@@ -44,20 +55,22 @@ SCENES = {
 }
 
 
-async def main(name: str) -> None:
+async def main(name: str, bg_mode: str = "flat") -> None:
     spec = SCENES[name]
     out = ROOT / "out" / "scenes"
     out.mkdir(parents=True, exist_ok=True)
     async with Drex() as drex:
         t0 = time.perf_counter()
-        frames, meta = await scene_gif(drex, **spec)
+        frames, meta = await scene_gif(drex, bg_mode=bg_mode, **spec)
         dt = time.perf_counter() - t0
+    name = f"{name}_{bg_mode}" if bg_mode != "flat" else name
     save_gif(frames, out / f"{name}.gif")
     sheet = Image.new("RGB", (frames[0].width * 6 // 2, frames[0].height // 2), "white")
-    for i, f in enumerate(frames[::2][:6]):
+    for i, f in enumerate(frames[::3][:6]):
         sheet.paste(f.resize((f.width // 2, f.height // 2), Image.NEAREST), (i * f.width // 2, 0))
     sheet.save(out / f"{name}_sheet.png")
-    meta["sprites"][0].flat(10).save(out / f"{name}_sprite.png")
+    for j, sp in enumerate(meta["sprites"]):
+        sp.flat(10, bg=(205, 210, 220)).save(out / f"{name}_sprite{j}.png")
     meta["background16"].flat(10).save(out / f"{name}_bg16.png")
     meta["background"].flat(5).save(out / f"{name}_bg32.png")
     u = drex.usage.summary()
@@ -69,4 +82,4 @@ async def main(name: str) -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main(sys.argv[1] if len(sys.argv) > 1 else "sunrise"))
+    asyncio.run(main(sys.argv[1] if len(sys.argv) > 1 else "sunrise", sys.argv[2] if len(sys.argv) > 2 else "flat"))

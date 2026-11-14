@@ -249,7 +249,7 @@ async def judge(drex: Drex, description: str, candidates: list[Painting]) -> tup
     r = await drex.ask(
         f"These are {len(cands)} candidate pixel-art drawings of: {description}.",
         {"best": choice("Which image is the clearest, most recognizable drawing of the subject?", labels)},
-        images=[png_b64(c.flat()) for c in cands],
+        images=[png_b64(c.flat(bg=(205, 210, 220))) for c in cands],  # gray, so white subjects show
     )
     best = r.pick("best")
     return int(best.split("_")[1]) - 1, r.probs("best")
@@ -260,12 +260,51 @@ async def refine(drex: Drex, description: str, coarse: Painting, n: int, **kw) -
     return await paint(drex, description, n=n, guide=coarse.flat(), **kw)
 
 
-async def best_painting(drex: Drex, description: str, *, n: int = 16, k: int = 6, **kw) -> Painting:
-    """Paint once, sample k-1 variations from the probabilities, let Drex judge the best."""
-    base = await paint(drex, description, n=n, **kw)
-    cands = [base] + sample(base, k - 1, temperature=0.6)
-    idx, _ = await judge(drex, description, cands)
+SPRITE_STYLES = [
+    "{d}",
+    "{d}, drawn as a simple bold icon with a thick silhouette",
+    "{d}, as a cute retro video-game character sprite, viewed from the side",
+]
+
+
+async def best_painting(
+    drex: Drex, description: str, *, n: int = 16, k: int = 6, styles: list[str] | None = None, **kw
+) -> Painting:
+    """Paint the subject in several phrasings, add low-temperature samples from Drex's own probabilities,
+    clean stray pixels from every candidate, and let Drex Max judge the best one."""
+    styles = styles or SPRITE_STYLES
+    bases = await asyncio.gather(*(paint(drex, s.format(d=description), n=n, **kw) for s in styles))
+    cands = [cleanup(b) for b in bases]
+    per = max(0, (k - len(cands)) // len(bases))
+    for i, b in enumerate(bases):
+        cands += [cleanup(s) for s in sample(b, per, temperature=0.35, seed=i)]
+    cands = [c for c in cands if any(x != TRANSPARENT for row in c.grid for x in row)] or cands
+    idx, _ = await judge(drex, description, cands[:8])
     return cands[idx]
+
+
+def trim(p: Painting) -> Painting:
+    """Crop transparent margins and re-center on a square grid, so size decisions mean what they say."""
+    rows = [r for r in range(p.n) if any(x != TRANSPARENT for x in p.grid[r])]
+    cols = [c for c in range(p.n) if any(p.grid[r][c] != TRANSPARENT for r in range(p.n))]
+    if not rows:
+        return p
+    r0, r1, c0, c1 = rows[0], rows[-1], cols[0], cols[-1]
+    side = max(r1 - r0, c1 - c0) + 1
+    grid = [[TRANSPARENT] * side for _ in range(side)]
+    dr, dc = (side - (r1 - r0 + 1)) // 2, (side - (c1 - c0 + 1)) // 2
+    for r in range(r0, r1 + 1):
+        for c in range(c0, c1 + 1):
+            grid[r - r0 + dr][c - c0 + dc] = p.grid[r][c]
+    return Painting(grid)
+
+
+def smooth(values: list[float], passes: int = 1) -> list[float]:
+    """Light 3-tap smoothing of a motion path (keeps the endpoints)."""
+    v = list(values)
+    for _ in range(passes):
+        v = [v[0]] + [(v[i - 1] + 2 * v[i] + v[i + 1]) / 4 for i in range(1, len(v) - 1)] + [v[-1]]
+    return v
 
 
 # ---------------------------------------------------------------- motion
@@ -277,7 +316,8 @@ class Track:
 
 
 async def motion(
-    drex: Drex, scene: str, sprite_name: str, motion_desc: str, *, frames: int, canvas: int, steps: int = 11
+    drex: Drex, scene: str, sprite_name: str, motion_desc: str, *, frames: int, canvas: int, steps: int = 11,
+    keep_inside: bool = True,
 ) -> Track:
     """One Drex call decides the sprite's position and size in every frame (score = expected value)."""
     pos_levels = [f"{round(i * (canvas - 1) / (steps - 1))}" for i in range(steps)]
@@ -285,7 +325,13 @@ async def motion(
                 for i, v in enumerate(pos_levels)]
     y_levels = [f"row {v} ({'top' if i == 0 else 'bottom' if i == steps - 1 else 'between'})"
                 for i, v in enumerate(pos_levels)]
-    size_levels = ["tiny", "small", "medium", "large", "huge"]
+    size_levels = [
+        "tiny (about 1/5 of the canvas width)",
+        "small (about 1/3 of the canvas width)",
+        "medium (about half the canvas width)",
+        "large (about 2/3 of the canvas width)",
+        "huge (almost the whole canvas width)",
+    ]
     qs: dict[str, dict] = {}
     for f in range(frames):
         when = f"in frame {f + 1} of {frames} ({f / max(frames - 1, 1):.0%} through the animation)"
@@ -306,20 +352,48 @@ async def motion(
         hi = min(lo + 1, len(size_px) - 1)
         return canvas * (size_px[lo] + (size_px[hi] - size_px[lo]) * (e - lo))
 
-    return Track(xs, ys, [size_at(f) for f in range(frames)])
+    sizes = smooth([size_at(f) for f in range(frames)])
+    xs, ys = smooth(xs), smooth(ys)
+    if keep_inside:  # keep at least ~90% of the sprite on screen
+        xs = [min(max(x, s * 0.4), canvas - 1 - s * 0.4) for x, s in zip(xs, sizes)]
+        ys = [min(max(y, s * 0.4), canvas - 1 - s * 0.4) for y, s in zip(ys, sizes)]
+    return Track(xs, ys, sizes)
 
 
-def compose(background: Painting, sprites: list[tuple[Painting, Track]], frames: int, scale: int) -> list[Image.Image]:
-    canvas = background.n
-    bg = background.flat()
+def _outlined(img: Image.Image, color=(20, 20, 24)) -> Image.Image:
+    """Add a 1-pixel dark outline around the opaque part of an RGBA sprite."""
+    from PIL import ImageFilter
+
+    alpha = img.getchannel("A").point(lambda a: 255 if a > 0 else 0)
+    ring = alpha.filter(ImageFilter.MaxFilter(3))
+    out = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    out.paste(Image.new("RGBA", img.size, color + (255,)), (0, 0), ring)
+    out.alpha_composite(img)
+    return out
+
+
+def compose(
+    background: Painting,
+    sprites: list[tuple[Painting, Track]],
+    frames: int,
+    scale: int,
+    *,
+    canvas: int | None = None,
+    outline: bool = True,
+) -> list[Image.Image]:
+    canvas = canvas or background.n
+    bg = background.flat().resize((canvas, canvas), Image.NEAREST)
     out = []
     for f in range(frames):
         frame = bg.convert("RGBA")
         for sp, tr in sprites:
             size = max(2, round(tr.sizes[f]))
             img = sp.image().resize((size, size), Image.NEAREST)
-            x = round(tr.xs[f] - size / 2)
-            y = round(tr.ys[f] - size / 2)
+            pad = 1 if outline else 0
+            if outline:
+                img = _outlined(img.crop((-pad, -pad, size + pad, size + pad)))
+            x = round(tr.xs[f] - size / 2) - pad
+            y = round(tr.ys[f] - size / 2) - pad
             layer = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
             layer.paste(img, (x, y), img)
             frame.alpha_composite(layer)
@@ -327,7 +401,7 @@ def compose(background: Painting, sprites: list[tuple[Painting, Track]], frames:
     return out
 
 
-def save_gif(frames: list[Image.Image], path, ms: int = 110) -> None:
+def save_gif(frames: list[Image.Image], path, ms: int = 90) -> None:
     frames[0].save(path, save_all=True, append_images=frames[1:], duration=ms, loop=0, optimize=False)
 
 
@@ -344,18 +418,27 @@ async def scene_gif(
     scene: str,
     background: str,
     sprites: list[SpriteSpec],
-    frames: int = 12,
+    frames: int = 16,
     canvas: int = 32,
     sprite_px: int = 16,
     k: int = 6,
+    bg_mode: str = "flat",  # "flat": 16x16 cleaned, scaled up  |  "refine": repainted at canvas size
+    outline: bool = True,
 ) -> tuple[list[Image.Image], dict]:
-    """Background painted once (refined 16->32), sprites painted once (best of k), Drex decides motion."""
-    bg_task = paint(drex, f"background only, no characters: {background}", n=16)
+    """Background painted once, sprites painted once (best of k, cleaned, trimmed), Drex decides motion."""
+    bg_desc = (f"background scenery only, with no characters or objects in front: {background}. "
+               f"Use large flat areas of color.")
+    bg_task = paint(drex, bg_desc, n=16)
     sprite_tasks = [best_painting(drex, s.look, n=sprite_px, k=k, sprite=True) for s in sprites]
-    motion_tasks = [motion(drex, scene, s.name, s.motion, frames=frames, canvas=canvas) for s in sprites]
+    others = ", ".join(f"the {s.name} ({s.motion})" for s in sprites)
+    motion_tasks = [motion(drex, f"{scene}; in it: {others}", s.name, s.motion, frames=frames, canvas=canvas)
+                    for s in sprites]
     bg16, *rest = await asyncio.gather(bg_task, *sprite_tasks, *motion_tasks)
-    sprite_ps, tracks = rest[: len(sprites)], rest[len(sprites):]
-    bg = await refine(drex, f"background only, no characters: {background}", bg16, n=canvas)
-    frames_out = compose(bg, list(zip(sprite_ps, tracks)), frames, scale=max(1, 320 // canvas))
+    bg16 = cleanup(bg16, passes=2)
+    sprite_ps = [trim(p) for p in rest[: len(sprites)]]
+    tracks = rest[len(sprites):]
+    bg = bg16 if bg_mode == "flat" else cleanup(await refine(drex, bg_desc, bg16, n=canvas), passes=2)
+    frames_out = compose(bg, list(zip(sprite_ps, tracks)), frames, scale=max(1, 320 // canvas),
+                         canvas=canvas, outline=outline)
     meta = {"background16": bg16, "background": bg, "sprites": sprite_ps, "tracks": tracks}
     return frames_out, meta

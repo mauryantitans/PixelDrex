@@ -8,15 +8,16 @@ Built at **Drexathon** (Nace AI, Nov 14 2026) · Track: 🎨 Wildcard
 <img src="docs/gallery/rocket.gif" width="200">
 <img src="docs/gallery/sunrise.gif" width="200">
 <img src="docs/gallery/heart.gif" width="200">
+<img src="docs/gallery/birds.gif" width="200">
 </p>
 
 Each GIF above was painted and animated entirely by [Drex](https://console.nace.ai), Nace's decision model:
 
-1. **Background** — every pixel of a 16×16 grid is one `choice` question over a 14-color palette (256 questions = **one** request), then refined to 32×32 with the first pass as a guide image.
-2. **Sprite** — painted once; 5 extra variations are *sampled from Drex's own per-pixel probabilities* (no extra calls), and Drex Max looks at all 6 and picks the best.
-3. **Motion** — one request asks "where is the sprite, and how big, in each of 12 frames?" as `score` questions. Scores are **expected values**, so the motion comes out sub-pixel smooth.
+1. **Background** — every pixel of a 16×16 grid is one `choice` question over a 14-color palette (256 questions = **one** request), cleaned of stray pixels.
+2. **Sprite** — painted in 3 phrasings; extra variations are *sampled from Drex's own per-pixel probabilities* (no extra calls); stray pixels are cleaned; Drex Max looks at all 6 candidates and picks the best. Trimmed and given a 1-px outline.
+3. **Motion** — one request per sprite asks "where is it, and how big, in each of 16 frames?" as `score` questions. Scores are **expected values**, so the motion comes out sub-pixel smooth.
 
-≈ 6 Drex calls · ≈ 1,600 decisions · 6–9 s · ≈ 1¢ per GIF. Nobody told the rocket to shrink as it flies away — Drex decided that.
+≈ 6 Drex calls · ≈ 1,100 decisions · ~5 s · < 1¢ per single-sprite GIF (3 sprites: 16 calls, ~2¢). Nobody told the rocket to shrink as it flies away — Drex decided that.
 
 ## Quick start
 
