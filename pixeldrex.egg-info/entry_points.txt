@@ -1,0 +1,2 @@
+[console_scripts]
+pixeldrex = pixeldrex.cli:main

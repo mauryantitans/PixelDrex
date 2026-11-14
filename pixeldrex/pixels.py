@@ -14,6 +14,7 @@ import asyncio
 import io
 import random
 from dataclasses import dataclass, field
+from typing import Callable
 
 from PIL import Image
 
@@ -424,15 +425,30 @@ async def scene_gif(
     k: int = 6,
     bg_mode: str = "flat",  # "flat": 16x16 cleaned, scaled up  |  "refine": repainted at canvas size
     outline: bool = True,
+    on_event: "Callable[[str, dict], None] | None" = None,
 ) -> tuple[list[Image.Image], dict]:
-    """Background painted once, sprites painted once (best of k, cleaned, trimmed), Drex decides motion."""
+    """Background painted once, sprites painted once (best of k, cleaned, trimmed), Drex decides motion.
+
+    on_event(kind, payload) is called as each part finishes: "background", "sprite", "motion", "done".
+    """
+    emit = on_event or (lambda kind, payload: None)
+
+    async def tagged(kind: str, payload: dict, coro):
+        result = await coro
+        emit(kind, {**payload, "result": result})
+        return result
+
     bg_desc = (f"background scenery only, with no characters or objects in front: {background}. "
                f"Use large flat areas of color.")
-    bg_task = paint(drex, bg_desc, n=16)
-    sprite_tasks = [best_painting(drex, s.look, n=sprite_px, k=k, sprite=True) for s in sprites]
-    others = ", ".join(f"the {s.name} ({s.motion})" for s in sprites)
-    motion_tasks = [motion(drex, f"{scene}; in it: {others}", s.name, s.motion, frames=frames, canvas=canvas)
+    bg_task = tagged("background", {}, paint(drex, bg_desc, n=16))
+    sprite_tasks = [tagged("sprite", {"name": s.name}, best_painting(drex, s.look, n=sprite_px, k=k, sprite=True))
                     for s in sprites]
+    others = ", ".join(f"the {s.name} ({s.motion})" for s in sprites)
+    motion_tasks = [
+        tagged("motion", {"name": s.name},
+               motion(drex, f"{scene}; in it: {others}", s.name, s.motion, frames=frames, canvas=canvas))
+        for s in sprites
+    ]
     bg16, *rest = await asyncio.gather(bg_task, *sprite_tasks, *motion_tasks)
     bg16 = cleanup(bg16, passes=2)
     sprite_ps = [trim(p) for p in rest[: len(sprites)]]
@@ -441,4 +457,5 @@ async def scene_gif(
     frames_out = compose(bg, list(zip(sprite_ps, tracks)), frames, scale=max(1, 320 // canvas),
                          canvas=canvas, outline=outline)
     meta = {"background16": bg16, "background": bg, "sprites": sprite_ps, "tracks": tracks}
+    emit("done", {"frames": len(frames_out)})
     return frames_out, meta
