@@ -62,7 +62,8 @@ class DeepInfra:
         max_tokens: int = 512,
         temperature: float = 0.2,
         json_mode: bool = False,
-    ) -> str:
+        raw: bool = False,
+    ) -> "str | tuple[str, dict]":
         model = model or (VISION_MODEL if images else TEXT_MODEL)
         content: list[dict] | str = prompt
         if images:
@@ -89,7 +90,8 @@ class DeepInfra:
             self.usage.completion_tokens += u.get("completion_tokens", 0)
             self.usage.cost_usd += u.get("estimated_cost") or 0.0
             self.usage.wall_ms.append(wall)
-            return data["choices"][0]["message"]["content"] or ""
+            content = data["choices"][0]["message"]["content"] or ""
+            return (content, data) if raw else content
         raise AssertionError("unreachable")
 
     async def image(self, prompt: str, *, model: str | None = None, size: str = "1024x1024") -> bytes:
