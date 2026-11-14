@@ -187,8 +187,12 @@ def gallery(limit: int = 60) -> JSONResponse:
 def main() -> None:
     import uvicorn
 
-    uvicorn.run("pixeldrex.web:app", host=os.getenv("HOST", "127.0.0.1"), port=int(os.getenv("PORT", "8000")),
-                log_level="warning")
+    host, port = os.getenv("HOST", "127.0.0.1"), int(os.getenv("PORT", "8000"))
+    missing = [k for k in ("NACE_API_KEY", "DEEPINFRA_API_KEY") if not os.getenv(k)]
+    if missing:
+        print(f"WARNING: {', '.join(missing)} not set - add them to {ROOT / '.env'} or GIFs will fail.", flush=True)
+    print(f"PixelDrex web app: open http://{host}:{port} in your browser  (Ctrl+C to stop)", flush=True)
+    uvicorn.run("pixeldrex.web:app", host=host, port=port, log_level="warning")
 
 
 if __name__ == "__main__":
