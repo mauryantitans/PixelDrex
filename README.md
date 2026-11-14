@@ -52,6 +52,33 @@ Two Drexes are at work: one decides every cell of the universe; the other, as In
 reef where coral spreads, bleaches and recovers, and a school of fish moves through. 4 world runs, 12 Intern turns,
 128 s, 29 System 1 (Drex) asks; the full agent log is in `intern_logs/`.*
 
+### 📄 Any document becomes a world (NDI)
+
+```bash
+.venv/bin/pixeldrex life --doc docs/samples/coral_reef_field_notes.pdf --save-world worlds/reef.json
+.venv/bin/pixeldrex god --world worlds/reef.json      # optional: let Intern fix the physics
+```
+
+[NDI](https://console.nace.ai) (Nace Document Intelligence) reads a PDF — a public URL or a local file it uploads, scanned
+pages included (OCR) — and **Extract** fills a schema with the document's *actors* and *interactions* (what spreads to,
+turns into, kills or helps what, and how fast), each **with citations to the page it came from**. The director turns
+those facts into states and rules, and **every rule ends with its source page**:
+
+```text
+coral with warm neighbour becomes bleached (p. 1)
+rock with coral neighbour becomes coral (p. 1)
+rock with seaweed neighbour becomes seaweed (p. 2)
+```
+
+In god mode, Intern keeps the document's rules and citations, and tags every law it invents with `(god)` — so each
+law of the final world says whether it came from the document or from the god. The sample is a 2-page,
+scanned-style field report (`scripts/make_sample_doc.py`); NDI read it in ~18 s and put each fact on the right page.
+
+<img src="docs/gallery/doc_reef_before_after.png" width="720" alt="reef built from the field notes, before and after Intern">
+
+*Top: the world built straight from the field notes froze (a heat patch flickers; the rules were written from the wrong cell's point of view). Bottom: after Intern's rewrites (it also deleted a rule about parrotfish, a state that did not exist) coral recolonises the rock and seaweed takes over the heat-damaged patch — the "phase shift" the notes describe. Intern reported honestly that it narrowly missed its own activity target (185 of 192 changed cells).*
+
+
 ## 🎬 Scenes
 
 <p>
@@ -105,6 +132,8 @@ The web app has both modes. In **Drex Life** you watch the world evolve frame by
 | `pixeldrex/drex.py` | Async Drex client: typed questions, images, 8-in-flight limit, retries, cost/latency tracking |
 | `pixeldrex/life.py` | Drex Life: world design, seeding, per-situation questions with caching, probabilistic steps |
 | `pixeldrex/god.py` | God mode: Intern tunes a world's rules until it stays alive |
+| `pixeldrex/ndi.py` | NDI: upload or link a document, Extract actors and interactions with page citations, build a cited world |
+| `docs/samples/` | A 2-page scanned-style field report for the NDI demo |
 | `scripts/intern.sh`, `intern_logs/` | Run Intern headless on this repo; every Intern run's JSON events and reply |
 | `worlds/` | Saved worlds (rules in English) |
 | `pixeldrex/pixels.py` | Scene engine: paint, background fusion, sample, judge, refine, tiled painting, motion, compositing |

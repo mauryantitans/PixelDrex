@@ -49,7 +49,10 @@ Your goal: a world that stays ALIVE and INTERESTING after {steps} steps, meaning
 Loop: run it, read the report, and if the goal is not met, edit only the "rules" (and if needed "start") in
 {world_file} to fix the dynamics (for example: give a dying state a way to come back, slow down a state that takes
 over, add a cycle so things keep changing). Keep rules short, one per line, only about a cell and its neighbours.
-Keep the same states and colors. Then run it again.
+Keep the same states and colors. If a rule ends with a source citation such as (p. 2), it came from a real
+document: keep its meaning and its citation when you rephrase it, and end every rule you invent yourself with
+(god). Rules are applied from the point of view of the cell that changes ("coral with a warm neighbour becomes
+warm", not "warm spreads to coral"), and may only mention the defined states. Then run it again.
 
 When the goal is met, or after {max_runs} runs, stop and reply with: whether the goal was met, the final rules, what
 you changed and why in one or two sentences per change, and the gif path of the last run."""
