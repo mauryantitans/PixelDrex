@@ -511,9 +511,19 @@ async def scene_gif(
             parts = [Part(str(p.get("name", "part"))[:30], str(p.get("where") or p.get("description") or ""))
                      for p in s.parts[:6]]
             subject = f"{s.name} ({s.look})"
-            if sprite_px >= 32:  # 16x16 shape, then Drex smooths every edge pixel at 32x32
-                return tidy(await paint_parts_32(drex, subject, parts, symmetric=s.symmetric))
-            return tidy(await paint_parts(drex, subject, parts, n=sprite_px, symmetric=s.symmetric))
+
+            async def once(symmetric: bool):
+                if sprite_px >= 32:  # 16x16 shape, then Drex smooths every edge pixel at 32x32
+                    return await paint_parts_32(drex, subject, parts, symmetric=symmetric)
+                return await paint_parts(drex, subject, parts, n=sprite_px, symmetric=symmetric)
+
+            def filled(sp) -> float:
+                return sum(x != "empty" for row in sp.grid for x in row) / (sp.n * sp.n)
+
+            sp = await once(s.symmetric)
+            if filled(sp) < 0.12:  # nearly empty sprite: repaint once, as a symmetric front view
+                sp = await once(True)
+            return tidy(sp)
         return trim(await best_painting(drex, s.look, n=min(sprite_px, 16), k=k, sprite=True))
 
     sprite_tasks = [tagged("sprite", {"name": s.name}, sprite_painting(s)) for s in sprites]

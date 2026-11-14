@@ -30,7 +30,12 @@ Turn the user's idea into a JSON scene spec:
 }}
 
 Rules:
-- 1 to 3 sprites. Each sprite is ONE simple object (a cat, a star, a car), never a group or a crowd.
+- 1 or 2 sprites (3 only if the idea truly needs it). Each sprite is ONE simple object (a cat, a star, a car),
+  never a group or a crowd. Effects like a light beam, smoke or a splash belong to a sprite's parts, not to a
+  separate sprite.
+- Prefer subjects and views that read well as a FRONT-FACING, left-right symmetric icon: rockets, UFOs, hot air
+  balloons, robots, ghosts, jellyfish, trees, houses, hearts, snowmen, faces. Show animals from the front (face
+  and body facing the viewer) and mark them symmetric, unless the idea truly needs a side view.
 - Describe sprites with bold shapes and 2-3 colors from this palette only: {", ".join(PALETTE)}.
 - Give every sprite 2 to 5 parts that together make its shape (e.g. a rocket: nose cone, body, window, fins,
   flame). Each part's "where" says its shape and position inside the sprite (top, bottom, left and right side,

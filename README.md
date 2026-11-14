@@ -40,9 +40,17 @@ sprites, rendered at 512 px.
 
 *Top: 16×16. Bottom: the same shapes at 32×32, every edge pixel decided by Drex from its neighbourhood (6 sprites, 3.1 s).*
 
+More scenes (front-facing subjects work best; the director now prefers them):
+
+<p>
+<img src="docs/gallery/balloon.gif" width="180" alt="a hot air balloon rising over green hills">
+<img src="docs/gallery/ghost.gif" width="180" alt="a ghost floating through a haunted house">
+<img src="docs/gallery/jellyfish.gif" width="180" alt="a jellyfish drifting in the deep sea">
+</p>
+
 3. **Motion** — one request per sprite asks "where is it, and how big, in each of 16 frames?" as `score` questions. Scores are **expected values**, so the motion comes out sub-pixel smooth.
 
-5–8 Drex calls · 5–9 s · < 1¢ per 512 px GIF. Nobody told the rocket to shrink as it flies away — Drex decided that. Front-view sprites come out best; side-view animals are still blobby.
+5–8 Drex calls · 5–9 s · < 1¢ per 512 px GIF. Nobody told the rocket to shrink as it flies away — Drex decided that. Front-view sprites come out best; side-view animals are still blobby, so the director prefers front views, keeps scenes to 1–2 sprites, and a nearly empty sprite is repainted once.
 
 ```text
 $ pixeldrex "a ufo abducting a cow at night"
