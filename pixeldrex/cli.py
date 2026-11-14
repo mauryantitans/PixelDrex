@@ -87,12 +87,14 @@ async def run(
     if spec_only:
         return {"spec": spec.to_dict(), "director": director_stats}
 
+    drex = Drex()
+
     def events(kind: str, payload: dict) -> None:
         prog.on_event(kind, payload)
         if on_event:
-            on_event(kind, payload)
+            on_event(kind, {**payload, "usage": drex.usage.summary(), "elapsed": time.perf_counter() - t_start})
 
-    async with Drex() as drex:
+    async with drex:
         gif_frames, meta = await scene_gif(
             drex, scene=spec.scene, background=spec.background, sprites=spec.sprites,
             frames=frames, outline=outline, on_event=events,

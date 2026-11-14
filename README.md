@@ -44,6 +44,14 @@ PixelDrex: a ufo abducting a cow at night
 
 Options: `--frames N`, `--ms N`, `--no-outline`, `--spec-only` (show the director's plan), `--spec FILE` (re-paint a saved plan), `--json`.
 
+### Web app
+
+```bash
+.venv/bin/pixeldrex-web     # http://127.0.0.1:8000
+```
+
+Type an idea and watch it happen live: the director's plan, the background and each sprite as they finish (with thumbnails), the motion paths Drex chose, and a running counter of Drex decisions, calls, seconds and cost. Every GIF lands in the gallery below.
+
 ## Layout
 
 | Path | What |
@@ -53,6 +61,7 @@ Options: `--frames N`, `--ms N`, `--no-outline`, `--spec-only` (show the directo
 | `pixeldrex/llm.py` | DeepInfra client: chat (director / baseline), vision, FLUX images |
 | `pixeldrex/director.py` | Director: idea → scene spec JSON (DeepInfra LLM) |
 | `pixeldrex/cli.py` | The `pixeldrex` command; saves GIF, frames, sprites, spec and stats to `out/gallery/` |
+| `pixeldrex/web.py`, `pixeldrex/web/index.html` | The web app (FastAPI + server-sent events) |
 | `scripts/scene.py` | Animated scenes (sunrise, rocket, heart, ball) |
 | `scripts/drex_gif.py` | v1: every pixel of every frame is a decision (flickery — kept for comparison) |
 | `PLAN.md` | Build plan for the hackathon |
