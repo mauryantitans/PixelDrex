@@ -132,7 +132,75 @@ async def run(
     return stats
 
 
+async def run_life_saved(
+    idea: str, *, size: int = 32, steps: int = 40, temperature: float = 0.6, on_event=None, quiet: bool = False
+) -> dict:
+    """Drex Life: design a world from an idea, run it, save GIF + stats to the gallery."""
+    from pixeldrex.life import run_life
+
+    prog = Progress(quiet)
+    t_start = time.perf_counter()
+
+    def on_world(w) -> None:
+        prog.log(f"world '{w.title}': " + ", ".join(f"{s.name}={s.color}" for s in w.states))
+        if on_event:
+            on_event("world", {"world": w.to_dict()})
+
+    def on_frame(i: int, life, info: dict) -> None:
+        if i == 0:
+            prog.log(f"Drex seeded the {size}x{size} world ({size * size} cell decisions)")
+        elif i % 10 == 0:
+            prog.log(f"step {i}: {life.cell_updates:,} cell decisions from {life.asked:,} unique questions")
+        if on_event:
+            on_event("frame", {"step": i, "life": life, "info": info,
+                               "elapsed": time.perf_counter() - t_start})
+
+    prog.log(f"director is designing a world: {idea!r}")
+    life, frames, usage = await run_life(idea, n=size, steps=steps, temperature=temperature,
+                                         on_frame=on_frame, on_world=on_world)
+    total_s = time.perf_counter() - t_start
+    run_dir = GALLERY / f"{datetime.now():%Y%m%d-%H%M%S}-life-{slugify(life.world.title)}"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    save_gif(frames, run_dir / "anim.gif", ms=150)
+    cell_decisions = size * size * (steps + 1)  # seeding + every step
+    stats = {
+        "mode": "life",
+        "idea": idea,
+        "spec": {"title": life.world.title},
+        "world": life.world.to_dict(),
+        "size": size,
+        "steps": steps,
+        "seconds": round(total_s, 1),
+        "cell_decisions": cell_decisions,
+        "unique_questions": life.asked + size * size,
+        "drex": usage["drex"],
+        "director": usage["director"],
+        "dir": str(run_dir.relative_to(ROOT)),
+        "gif": str((run_dir / "anim.gif").relative_to(ROOT)),
+    }
+    (run_dir / "stats.json").write_text(json.dumps(stats, indent=2))
+    return stats
+
+
+def life_main(argv: list[str]) -> None:
+    ap = argparse.ArgumentParser(prog="pixeldrex life",
+                                 description="Drex Life: every pixel is an agent; the laws of physics are plain English.")
+    ap.add_argument("idea", help="a world, e.g. 'a zombie outbreak in a city'")
+    ap.add_argument("--size", type=int, default=32)
+    ap.add_argument("--steps", type=int, default=40)
+    ap.add_argument("--temp", type=float, default=0.6, help="sampling temperature over Drex's probabilities")
+    args = ap.parse_args(argv)
+    print(f"PixelDrex Life: {args.idea}", flush=True)
+    res = asyncio.run(run_life_saved(args.idea, size=args.size, steps=args.steps, temperature=args.temp))
+    print(f"\n  GIF: {res['gif']}")
+    print(f"  {res['cell_decisions']:,} cell decisions from {res['unique_questions']:,} unique Drex questions in "
+          f"{res['drex']['calls']} calls · {res['seconds']}s · Drex ≈ ${res['drex']['cost_usd']:.4f}")
+
+
 def main(argv: list[str] | None = None) -> None:
+    argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] == "life":
+        return life_main(argv[1:])
     ap = argparse.ArgumentParser(prog="pixeldrex", description="Drex paints and animates your idea as a pixel-art GIF.")
     ap.add_argument("idea", nargs="?", help="what to animate, e.g. 'a cat chasing a mouse'")
     ap.add_argument("--spec", help="paint a saved scene spec JSON instead of calling the director")
