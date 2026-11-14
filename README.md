@@ -64,7 +64,17 @@ More scenes (front-facing subjects work best; the director now prefers them):
 <img src="docs/gallery/jellyfish.gif" width="180" alt="a jellyfish drifting in the deep sea">
 </p>
 
-3. **Motion** — one request per sprite asks "where is it, and how big, in each of 16 frames?" as `score` questions. Scores are **expected values**, so the motion comes out sub-pixel smooth.
+**Things that change, not just move (poses).** Real GIFs change shape: wings flap, flames flicker, a sapling grows
+into a tree. The director can give a sprite 2–4 **poses** (same part names, different positions); Drex paints every
+pose part by part with shared colors, all poses share one frame so nothing jumps, and the motion request asks
+**"which pose is the tree in during frame 7?"** for every frame.
+
+<p>
+<img src="docs/gallery/sapling_to_tree.gif" width="200" alt="a sapling growing into a big tree (3 poses)">
+<img src="docs/gallery/butterfly.gif" width="200" alt="a butterfly flapping its wings (2 poses)">
+</p>
+
+3. **Motion** — one request per sprite asks "where is it, and how big, in each of 16 frames?" as `score` questions. Scores are **expected values**, so the motion comes out sub-pixel smooth. The same request also asks how the sprite is **tilted** (it leans into its motion) and its **shape** (stretched when fast, squashed when it lands) — classic cartoon squash and stretch, decided by Drex.
 
 At the default 64×64: about 7–11 Drex calls · ~10 s · ~1¢ per 512 px GIF (32×32: 5–8 calls, 5–9 s). Nobody told the rocket to shrink as it flies away — Drex decided that. Front-view sprites come out best; side-view animals are still blobby, so the director prefers front views, keeps scenes to 1–2 sprites, and a nearly empty sprite is repainted once.
 

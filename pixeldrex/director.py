@@ -25,6 +25,7 @@ Turn the user's idea into a JSON scene spec:
     {{"name": "one or two words", "look": "what it looks like: shape and colors",
       "parts": [{{"name": "one or two words", "where": "its shape and where it sits in the sprite, e.g. 'the pointed tip at the very top'"}}],
       "symmetric": true,
+      "poses": [{{"name": "short pose name", "parts": [{{"name": "...", "where": "..."}}]}}],
       "motion": "how it moves across the canvas, using words like far left, far right, top, bottom, center, rises, falls, grows, shrinks"}}
   ]
 }}
@@ -40,6 +41,11 @@ Rules:
 - Give every sprite 2 to 5 parts that together make its shape (e.g. a rocket: nose cone, body, window, fins,
   flame). Each part's "where" says its shape and position inside the sprite (top, bottom, left and right side,
   center). Parts are what the painter places pixel by pixel, so make them big and distinct.
+- If the sprite CHANGES SHAPE during the animation (wings flapping, a flame flickering, legs running, a sapling
+  growing into a tree, a flower opening, a candle burning down, a mouth opening and closing), give it 2 to 4
+  "poses" in order. Each pose has its own "parts" list using the SAME part names (and colors) as "parts", with
+  "where" describing that part in that pose (e.g. pose "wings up": wings raised above the body; pose "wings down":
+  wings lowered below the body). Leave "poses" empty for sprites that only move. Prefer ideas with a clear change.
 - "symmetric" is true when the sprite looks the same mirrored left-to-right (front views: rockets, UFOs, faces,
   trees, houses, hearts) and false for side views (a running cat, a fish swimming, a car driving).
 - The background contains no characters or objects that move; put anything that moves in a sprite.
@@ -74,6 +80,7 @@ class SceneSpec:
             SpriteSpec(str(s.get("name", "sprite"))[:30], str(s.get("look", s.get("name", ""))),
                        str(s.get("motion", "stays in the center")),
                        parts=[p for p in (s.get("parts") or []) if isinstance(p, dict) and p.get("name")][:6],
+                       poses=[p for p in (s.get("poses") or []) if isinstance(p, dict) and p.get("parts")][:4],
                        symmetric=bool(s.get("symmetric", True)))
             for s in (d.get("sprites") or [])[:3]
             if isinstance(s, dict)

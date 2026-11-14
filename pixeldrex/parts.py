@@ -117,6 +117,7 @@ async def paint_parts(
     symmetric: bool = True,
     model: str = "drex-max-v1.1",
     guide: "PartsSprite | None" = None,
+    colors: dict[str, str] | None = None,
 ) -> PartsSprite:
     """guide: a coarser painting of the same sprite (same framing). Drex sees it as Image 1 and keeps its shapes
     while adding smoother edges and finer detail; its part colors are reused, so no color questions are asked."""
@@ -132,7 +133,7 @@ async def paint_parts(
             qs[f"p_{r:02d}_{c:02d}"] = choice(
                 f"Which part of the {subject} covers the pixel at row {r}, column {c}? {where}", crit)
     palette = {k: None for k in PALETTE}
-    if guide is None:
+    if guide is None and colors is None:
         for i, p in enumerate(parts):
             qs[f"color_{i}"] = choice(f"What color is the {subject}'s {p.name} ({p.description})?", palette)
     state = (f"A {n}x{n} pixel-art sprite of {subject}, like a classic 8-bit video game icon: centered, filling most "
@@ -157,7 +158,9 @@ async def paint_parts(
             prow = prow + prow[::-1]
         grid.append(row)
         probs.append(prow)
-    if guide is not None:
+    if colors is not None:  # reuse a sibling pose's colors so every pose matches
+        colors = {p.name: colors.get(p.name, "gray") for p in parts}
+    elif guide is not None:
         colors = {p.name: guide.colors.get(p.name, "gray") for p in parts}
     else:
         colors = {p.name: ans[f"color_{i}"]["choice"] for i, p in enumerate(parts)}
@@ -228,11 +231,68 @@ async def paint_parts_32(drex: Drex, subject: str, parts: list[Part], *, symmetr
 
 
 async def paint_parts_res(drex: Drex, subject: str, parts: list[Part], *, res: int = 32,
-                          symmetric: bool = True) -> PartsSprite:
+                          symmetric: bool = True, colors: dict[str, str] | None = None) -> PartsSprite:
     """Any power-of-two resolution >= 16: the 16x16 part layout, then one Drex edge-smoothing pass per doubling
     (16 -> 32 -> 64 -> 128). Each pass only asks local questions, so edges get smoother and curves rounder;
     the detail itself comes from the 16x16 layout."""
-    sprite = await paint_parts(drex, subject, parts, n=16, symmetric=symmetric)
+    sprite = await paint_parts(drex, subject, parts, n=16, symmetric=symmetric, colors=colors)
     while sprite.n < res:
         sprite = await smooth_upscale(drex, sprite, symmetric=symmetric)
     return sprite
+
+
+class PoseSprite:
+    """A sprite that changes shape over time: several poses painted part by part with shared colors, all cropped
+    to one shared frame so switching poses doesn't make the sprite jump. The scene compositor asks native(i)."""
+
+    def __init__(self, poses: list[PartsSprite], names: list[str]):
+        self.poses, self.names = poses, names
+
+    @property
+    def n(self) -> int:
+        return self.poses[0].n
+
+    def native(self, i: int = 0) -> Image.Image:
+        return self.poses[min(max(i, 0), len(self.poses) - 1)].native()
+
+    def flat(self, scale: int = 10, bg=(205, 210, 220), **kw) -> Image.Image:
+        """All poses side by side (thumbnails and saved sprite sheets)."""
+        imgs = [p.flat(scale, bg, **kw) for p in self.poses]
+        out = Image.new("RGB", (sum(i.width for i in imgs), max(i.height for i in imgs)), bg)
+        x = 0
+        for im in imgs:
+            out.paste(im, (x, 0))
+            x += im.width
+        return out
+
+
+def tidy_group(sprites: list[PartsSprite]) -> list[PartsSprite]:
+    """tidy() each pose, but crop all of them to the union of their extents so they share one frame."""
+    def destray(s: PartsSprite) -> PartsSprite:
+        g, n = s.grid, s.n
+        new = [row[:] for row in g]
+        for r in range(n):
+            for c in range(n):
+                nb = [g[rr][cc] for rr in range(r - 1, r + 2) for cc in range(c - 1, c + 2)
+                      if (rr, cc) != (r, c) and 0 <= rr < n and 0 <= cc < n]
+                if sum(x == g[r][c] for x in nb) < 2:
+                    new[r][c] = max(sorted(set(nb)), key=nb.count)
+        return PartsSprite(s.subject, new, s.colors)
+
+    sprites = [destray(s) for s in sprites]
+    n = sprites[0].n
+    rows = [r for s in sprites for r in range(n) if any(x != EMPTY for x in s.grid[r])]
+    cols = [c for s in sprites for c in range(n) if any(s.grid[r][c] != EMPTY for r in range(n))]
+    if not rows:
+        return sprites
+    r0, r1, c0, c1 = min(rows), max(rows), min(cols), max(cols)
+    side = max(r1 - r0, c1 - c0) + 1
+    dr, dc = (side - (r1 - r0 + 1)) // 2, (side - (c1 - c0 + 1)) // 2
+    out = []
+    for s in sprites:
+        grid = [[EMPTY] * side for _ in range(side)]
+        for r in range(r0, r1 + 1):
+            for c in range(c0, c1 + 1):
+                grid[r - r0 + dr][c - c0 + dc] = s.grid[r][c]
+        out.append(PartsSprite(s.subject, grid, s.colors))
+    return out

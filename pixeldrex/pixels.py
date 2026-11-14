@@ -357,11 +357,14 @@ class Track:
     xs: list[float]  # sprite center, 0..W-1
     ys: list[float]
     sizes: list[float]  # sprite size in canvas pixels
+    tilts: list[float] = field(default_factory=list)  # degrees, + = leaning right (clockwise)
+    poses: list[int] = field(default_factory=list)  # which pose is shown in each frame (PoseSprite)
+    squash: list[float] = field(default_factory=list)  # -1 stretched tall .. 0 normal .. +1 squashed flat
 
 
 async def motion(
     drex: Drex, scene: str, sprite_name: str, motion_desc: str, *, frames: int, canvas: int, steps: int = 11,
-    keep_inside: bool = True,
+    keep_inside: bool = True, poses: list[dict] | None = None,
 ) -> Track:
     """One Drex call decides the sprite's position and size in every frame (score = expected value)."""
     pos_levels = [f"{round(i * (canvas - 1) / (steps - 1))}" for i in range(steps)]
@@ -376,14 +379,25 @@ async def motion(
         "large (about 2/3 of the canvas width)",
         "huge (almost the whole canvas width)",
     ]
+    tilt_levels = ["leaning far to the left", "leaning a little to the left", "upright",
+                   "leaning a little to the right", "leaning far to the right"]
+    squash_levels = ["stretched tall and thin (moving fast)", "slightly stretched", "normal shape",
+                     "slightly squashed", "squashed flat and wide (landing or impact)"]
     qs: dict[str, dict] = {}
     for f in range(frames):
         when = f"in frame {f + 1} of {frames} ({f / max(frames - 1, 1):.0%} through the animation)"
         qs[f"x_{f:02d}"] = score(f"Where is the center of the {sprite_name} horizontally {when}?", x_levels)
         qs[f"y_{f:02d}"] = score(f"Where is the center of the {sprite_name} vertically {when}?", y_levels)
         qs[f"s_{f:02d}"] = score(f"How big is the {sprite_name} {when}?", size_levels)
+        qs[f"t_{f:02d}"] = score(f"How is the {sprite_name} tilted {when}?", tilt_levels)
+        qs[f"q_{f:02d}"] = score(f"What is the {sprite_name}'s shape {when}?", squash_levels)
+        if poses:
+            qs[f"p_{f:02d}"] = choice(f"Which pose is the {sprite_name} in {when}?",
+                                      {f"pose_{i}": str(p.get("name") or f"pose {i + 1}") for i, p in enumerate(poses)})
     state = (f"An animated {canvas}x{canvas} pixel-art scene: {scene}. The {sprite_name} moves like this: "
-             f"{motion_desc}. Row 0 is the top of the canvas and column 0 is the left edge.")
+             f"{motion_desc}. Row 0 is the top of the canvas and column 0 is the left edge. Animate it like a "
+             f"cartoon animator: it leans into the direction it moves, stretches when moving fast, squashes when "
+             f"it lands, hits something or pushes off, and stays upright and normal when it is still.")
     r = await drex.ask(state, qs)
     to_px = (canvas - 1) / (steps - 1)
     size_px = [0.2, 0.35, 0.5, 0.65, 0.85]  # fraction of canvas
@@ -401,7 +415,11 @@ async def motion(
     if keep_inside:  # keep at least ~90% of the sprite on screen
         xs = [min(max(x, s * 0.4), canvas - 1 - s * 0.4) for x, s in zip(xs, sizes)]
         ys = [min(max(y, s * 0.4), canvas - 1 - s * 0.4) for y, s in zip(ys, sizes)]
-    return Track(xs, ys, sizes)
+    # expected values: tilt 0..4 -> -24..+24 degrees; squash 0..4 -> -1..+1 (light smoothing keeps it fluid)
+    tilts = smooth([(r.score(f"t_{f:02d}") - 2) * 12 for f in range(frames)])
+    squash = smooth([(r.score(f"q_{f:02d}") - 2) / 2 for f in range(frames)])
+    pose_seq = [int(r.pick(f"p_{f:02d}").split("_")[1]) for f in range(frames)] if poses else []
+    return Track(xs, ys, sizes, tilts=tilts, squash=squash, poses=pose_seq)
 
 
 def _outlined(img: Image.Image, color=(20, 20, 24)) -> Image.Image:
@@ -432,13 +450,22 @@ def compose(
         frame = bg.convert("RGBA")
         for sp, tr in sprites:
             size = max(2, round(tr.sizes[f]))
-            src = sp.native() if hasattr(sp, "native") else sp.image()
-            img = src.resize((size, size), Image.NEAREST)
+            if hasattr(sp, "poses"):
+                src = sp.native(tr.poses[f] if tr.poses else 0)
+            else:
+                src = sp.native() if hasattr(sp, "native") else sp.image()
+            q = tr.squash[f] if tr.squash else 0.0  # squash & stretch, volume roughly kept
+            w = max(2, round(size * (1 + 0.22 * q)))
+            h = max(2, round(size * (1 - 0.22 * q)))
+            img = src.resize((w, h), Image.NEAREST)
+            tilt = tr.tilts[f] if tr.tilts else 0.0
+            if abs(tilt) >= 2:
+                img = img.rotate(-tilt, resample=Image.NEAREST, expand=True)
             pad = 1 if outline else 0
             if outline:
-                img = _outlined(img.crop((-pad, -pad, size + pad, size + pad)))
-            x = round(tr.xs[f] - size / 2) - pad
-            y = round(tr.ys[f] - size / 2) - pad
+                img = _outlined(img.crop((-pad, -pad, img.width + pad, img.height + pad)))
+            x = round(tr.xs[f] - img.width / 2)
+            y = round(tr.ys[f] + size / 2 - img.height + (pad if not outline else 0))  # keep the base planted
             layer = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
             layer.paste(img, (x, y), img)
             frame.alpha_composite(layer)
@@ -472,6 +499,7 @@ class SpriteSpec:
     look: str
     motion: str
     parts: list[dict] = field(default_factory=list)  # [{"name": ..., "where": ...}] -> painted part by part
+    poses: list[dict] = field(default_factory=list)  # [{"name": "wings up", "parts": [...]}, ...] -> changes shape
     symmetric: bool = True
 
 
@@ -504,9 +532,28 @@ async def scene_gif(
     bg_desc = (f"background scenery only, with no characters or objects in front: {background}. "
                f"Use large flat areas of color.")
     bg_task = tagged("background", {}, paint_background(drex, bg_desc, n=16, row_weight=row_weight))
-    from pixeldrex.parts import Part, PartsSprite, paint_parts, paint_parts_res, smooth_upscale, tidy
+    from pixeldrex.parts import (Part, PartsSprite, PoseSprite, paint_parts, paint_parts_res, smooth_upscale,
+                                 tidy, tidy_group)
+
+    def to_parts(items: list[dict]) -> list[Part]:
+        return [Part(str(p.get("name", "part"))[:30], str(p.get("where") or p.get("description") or ""))
+                for p in items[:6] if isinstance(p, dict)]
+
+    async def pose_painting(s: SpriteSpec):
+        """Sprites that change shape: paint every pose with the first pose's colors, then share one frame."""
+        subject = f"{s.name} ({s.look})"
+        poses = [p for p in s.poses[:4] if to_parts(p.get("parts") or [])]
+        res = max(sprite_px, 16)
+        first = await paint_parts_res(drex, subject, to_parts(poses[0]["parts"]), res=res, symmetric=s.symmetric)
+        rest = await asyncio.gather(*(
+            paint_parts_res(drex, f"{subject}, pose: {p.get('name', '')}", to_parts(p["parts"]), res=res,
+                            symmetric=s.symmetric, colors=first.colors)
+            for p in poses[1:]))
+        return PoseSprite(tidy_group([first, *rest]), [str(p.get("name", "")) for p in poses])
 
     async def sprite_painting(s: SpriteSpec):
+        if len(s.poses) >= 2:
+            return await pose_painting(s)
         if s.parts:
             parts = [Part(str(p.get("name", "part"))[:30], str(p.get("where") or p.get("description") or ""))
                      for p in s.parts[:6]]
@@ -530,7 +577,8 @@ async def scene_gif(
     others = ", ".join(f"the {s.name} ({s.motion})" for s in sprites)
     motion_tasks = [
         tagged("motion", {"name": s.name},
-               motion(drex, f"{scene}; in it: {others}", s.name, s.motion, frames=frames, canvas=canvas))
+               motion(drex, f"{scene}; in it: {others}", s.name, s.motion, frames=frames, canvas=canvas,
+                      poses=s.poses if len(s.poses) >= 2 else None))
         for s in sprites
     ]
     bg16, *rest = await asyncio.gather(bg_task, *sprite_tasks, *motion_tasks)
