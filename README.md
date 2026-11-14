@@ -9,13 +9,13 @@ Built at **Drexathon** (Nace AI, Nov 14 2026) · Track: 🎨 Wildcard
 🎥 **Backup demo video (2½ min):** [`docs/video/pixeldrex_demo.mp4`](docs/video/pixeldrex_demo.mp4) — live runs of the web app: a 32×32 rocket being painted part by part, then Drex Life: a forest fire (replayed world) and a wildfire world built from this week's news.
 
 <p>
-<img src="docs/gallery/ufo.gif" width="256" alt="a ufo abducting a cow, painted and animated by Drex">
+<img src="docs/gallery/ufo_64.gif" width="256" alt="a ufo abducting a cow, painted and animated by Drex (64x64 sprites)">
 <img src="docs/gallery/rocket.gif" width="256" alt="a rocket launching at night, painted and animated by Drex">
 </p>
 
 Two ways a decision model makes a GIF:
 
-- **🎬 Paint it (Scenes) — the main idea.** Type an idea; Drex decides which part of each 32×32 sprite covers every pixel, what color each part is, and how everything moves. 512 px GIFs.
+- **🎬 Paint it (Scenes) — the main idea.** Type an idea; Drex decides which part of each sprite covers every pixel, what color each part is, and how everything moves. Sprites at 16, 32, 64 (default) or 128 px; 512 px GIFs.
 - **🧬 Let it live (Drex Life) — the extension we built next.** Every pixel is a living agent: you describe a world; its laws of physics are plain English; every frame, every pixel asks Drex what it becomes next.
 
 Everything else picks or fixes what the GIF shows: **this week's news** (Keenable) or **any document** (NDI) can define a world, and in **god mode** Intern rewrites a dull world's rules until the GIF comes alive.
@@ -42,6 +42,20 @@ sprites, rendered at 512 px.
 
 *Top: 16×16. Bottom: the same shapes at 32×32, every edge pixel decided by Drex from its neighbourhood (6 sprites, 3.1 s).*
 
+**64×64 and 128×128.** The same step repeats: 16 → 32 → 64 → 128, one Drex smoothing pass (~1 s, ~1 call) per
+doubling. Each pass makes edges smoother and curves rounder; the detail itself still comes from the 16×16 part
+layout. **64×64 is the default** — smooth and clean while still reading as pixel art; 128×128 is cleaner still but
+looks closer to flat vector art. Choose with `--res 16|32|64|128` or the web app's resolution radio buttons (16 × 16 shows Drex's raw part layout with no smoothing).
+
+<img src="docs/gallery/resolution_ladder.png" width="720" alt="the same sprites at 16, 32, 64 and 128 pixels">
+
+<p>
+<img src="docs/gallery/ufo_64.gif" width="256" alt="ufo scene with 64x64 sprites">
+<img src="docs/gallery/ufo_128.gif" width="256" alt="ufo scene with 128x128 sprites">
+</p>
+
+*Left: 64×64 sprites (11 Drex calls, 10 s). Right: 128×128 sprites (14 calls, 15 s). Both 512 px GIFs.*
+
 More scenes (front-facing subjects work best; the director now prefers them):
 
 <p>
@@ -52,7 +66,7 @@ More scenes (front-facing subjects work best; the director now prefers them):
 
 3. **Motion** — one request per sprite asks "where is it, and how big, in each of 16 frames?" as `score` questions. Scores are **expected values**, so the motion comes out sub-pixel smooth.
 
-5–8 Drex calls · 5–9 s · < 1¢ per 512 px GIF. Nobody told the rocket to shrink as it flies away — Drex decided that. Front-view sprites come out best; side-view animals are still blobby, so the director prefers front views, keeps scenes to 1–2 sprites, and a nearly empty sprite is repainted once.
+At the default 64×64: about 7–11 Drex calls · ~10 s · ~1¢ per 512 px GIF (32×32: 5–8 calls, 5–9 s). Nobody told the rocket to shrink as it flies away — Drex decided that. Front-view sprites come out best; side-view animals are still blobby, so the director prefers front views, keeps scenes to 1–2 sprites, and a nearly empty sprite is repainted once.
 
 ```text
 $ pixeldrex "a ufo abducting a cow at night"
@@ -63,7 +77,7 @@ $ pixeldrex "a ufo abducting a cow at night"
   1,046 Drex decisions in 8 calls · 8.9s total · Drex ≈ $0.0085 · director $0.00010
 ```
 
-Options: `--frames N`, `--ms N`, `--no-outline`, `--spec-only` (show the director's plan), `--spec FILE` (re-paint a saved plan), `--json`.
+Options: `--res 16|32|64|128` (sprite resolution, default 64), `--frames N`, `--ms N`, `--no-outline`, `--spec-only` (show the director's plan), `--spec FILE` (re-paint a saved plan), `--json`.
 
 ## 🧬 Let it live: Drex Life (the extension)
 

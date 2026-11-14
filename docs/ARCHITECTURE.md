@@ -49,8 +49,9 @@ Drex limits the design works around: **512 questions per request**, 8 images per
 ## 1. 🎬 Scenes — paint it
 
 **In:** one sentence, e.g. *"a ufo abducting a cow at night"*.
-**Out:** a 16-frame, 512 × 512 px GIF of a 64 × 64 pixel canvas, with 32 × 32 sprites.
-**Cost:** 5–8 Drex calls, 5–9 s, under 1¢.
+**Out:** a 16-frame, 512 × 512 px GIF. Sprites are 16, 32, 64 (default) or 128 px (`--res`) on a canvas twice that
+size.
+**Cost:** at 64×64, about 7–11 Drex calls, ~10 s, ~1¢ (32×32: 5–8 calls, 5–9 s).
 
 ```mermaid
 flowchart TD
@@ -58,19 +59,19 @@ flowchart TD
 
     DIR --> BG & SP & MO
 
-    subgraph BG [Background — 2 Drex calls]
-        B1["16×16: 256 pixel 'which color?' +<br/>16 'main color of row r?' questions<br/>(one request)"] --> B2["fuse: argmax P(pixel) × P(row)^0.5<br/>+ remove stray pixels"] --> B3["Drex edge smoothing → 32×32<br/>(local questions, edges clamped)"]
+    subgraph BG [Background — 1 call + 1 per doubling]
+        B1["16×16: 256 pixel 'which color?' +<br/>16 'main color of row r?' questions<br/>(one request)"] --> B2["fuse: argmax P(pixel) × P(row)^0.5<br/>+ remove stray pixels"] --> B3["Drex edge smoothing up to the sprite size<br/>(local questions, edges clamped)"]
     end
 
-    subgraph SP [Each sprite — 2 Drex calls]
-        S1["16×16: 'which PART covers this pixel?'<br/>left half only if symmetric (128 Qs)<br/>+ 'what color is each part?' (one request)"] --> S2["Drex edge smoothing → 32×32<br/>every edge pixel decided from its 8 neighbours"] --> S3["retry once if nearly empty<br/>→ remove strays, trim"]
+    subgraph SP [Each sprite — 1 call + 1 per doubling]
+        S1["16×16: 'which PART covers this pixel?'<br/>left half only if symmetric (128 Qs)<br/>+ 'what color is each part?' (one request)"] --> S2["Drex edge smoothing, one pass per doubling<br/>16 → 32 → 64 (default) → 128<br/>every edge pixel decided from its 8 neighbours"] --> S3["retry once if nearly empty<br/>→ remove strays, trim"]
     end
 
     subgraph MO [Each sprite's motion — 1 Drex call]
         M1["48 score questions:<br/>x, y, size in each of 16 frames"] --> M2["expected values → sub-pixel paths<br/>→ light smoothing, kept on screen"]
     end
 
-    BG & SP & MO --> C["Compose 16 frames on a 64×64 canvas:<br/>shaded background · shaded sprites with 1-px outline<br/>at the decided positions and sizes"] --> GIF[["512 px GIF + spec.json + stats.json"]]
+    BG & SP & MO --> C["Compose 16 frames on a canvas twice the sprite size:<br/>shaded background · shaded sprites with 1-px outline<br/>at the decided positions and sizes"] --> GIF[["512 px GIF + spec.json + stats.json"]]
 ```
 
 ### The steps
@@ -95,6 +96,8 @@ flowchart TD
    **edge** pixel asks, with no coordinates at all: *"This pixel is currently 'body'. Around it: north nose cone,
    east empty, south body, … which should it be so every outline is smooth and natural?"* Pixels with the same
    neighbourhood share one question, so a sprite needs about one request. Symmetric sprites stay mirrored.
+   The pass repeats once per doubling — 16 → 32 → 64 (the default) → 128 — each about 1 s and 1 call. Every pass
+   makes edges smoother and curves rounder; the detail itself comes from the 16×16 part layout.
 5. **Safety** — a sprite that comes out less than 12% filled is repainted once as a symmetric front view; stray pixels
    (fewer than 2 same-part neighbours) are removed; empty margins are trimmed.
 6. **Motion** (`pixels.motion`) — one request per sprite with 3 × 16 `score` questions: *"where is the center of the
@@ -111,19 +114,19 @@ flowchart TD
 | Step | Drex calls | Questions (typical) |
 |---|---|---|
 | Director | 0 (1 DeepInfra call) | — |
-| Background 16×16 + smoothing | 2 | 272 + unique edge situations |
-| Each sprite: 16×16 parts + smoothing | 2 (+1 if retried) | ~130 + unique edge situations |
+| Background 16×16 + smoothing | 1 + 1 per doubling (2 at 32, 3 at 64, 4 at 128) | 272 + unique edge situations |
+| Each sprite: 16×16 parts + smoothing | 1 + 1 per doubling (+ a retry if nearly empty) | ~130 + unique edge situations |
 | Each sprite's motion | 1 | 48 |
-| **Total, 1 sprite / 2 sprites** | **5 / 8** | ~600 / ~1,050 |
+| **Total, 2 sprites at 32 / 64 / 128** | **8 / 11 / 14** | ~1,050 / ~1,350 / ~1,300 |
 
 ### Files
 
 | File | Role |
 |---|---|
 | `pixeldrex/director.py` | idea → `SceneSpec` (title, scene, background, sprites with parts / symmetric / motion) |
-| `pixeldrex/parts.py` | `paint_parts` (part questions + colors), `smooth_upscale` (local edge questions), `paint_parts_32`, `tidy`, shading and outline rendering |
+| `pixeldrex/parts.py` | `paint_parts` (part questions + colors), `smooth_upscale` (local edge questions), `paint_parts_res` (16 → 32 → 64 → 128), `tidy`, shading and outline rendering |
 | `pixeldrex/pixels.py` | `paint_background` (pixel × row fusion), `motion` (score questions), `compose`, `shade_background`, `scene_gif` (orchestrates everything in parallel), plus the earlier color-per-pixel painter kept for comparison |
-| `scripts/parts_test.py`, `scripts/parts32_test.py` | the experiments behind the design (color vs parts, 16 vs 32) |
+| `scripts/parts_test.py`, `scripts/parts32_test.py`, `scripts/parts_res_test.py` | the experiments behind the design (color vs parts, 16 vs 32, the 16 → 128 ladder) |
 
 ### Known limits
 
@@ -241,7 +244,7 @@ rules it rewrites, System 1 nudges), and collects every world report. Rules that
 
 | Command | Engine |
 |---|---|
-| `pixeldrex "idea" [--frames N] [--ms N] [--spec FILE] [--spec-only] [--json]` | Scenes |
+| `pixeldrex "idea" [--res 16\|32\|64\|128] [--frames N] [--ms N] [--spec FILE] [--spec-only] [--json]` | Scenes |
 | `pixeldrex life "idea" \| --world F \| --news TOPIC \| --doc PDF [--size N] [--steps N] [--temp T] [--report] [--save-world F]` | Drex Life |
 | `pixeldrex god "idea" \| --world F [--max-runs N]` | Drex Life + Intern |
 | `pixeldrex-web` | both, in the browser |
@@ -251,7 +254,7 @@ rules it rewrites, System 1 nudges), and collects every world report. Rules that
 | Endpoint | What |
 |---|---|
 | `GET /` | the page (Scene and Drex Life tabs) |
-| `GET /api/paint?idea=…` | runs a scene; server-sent events: `spec`, `background`, `sprite`, `motion`, `done`, `result`, `error` (each with running Drex usage) |
+| `GET /api/paint?idea=…&res=64` | runs a scene; server-sent events: `spec`, `background`, `sprite`, `motion`, `done`, `result`, `error` (each with running Drex usage) |
 | `GET /api/life?idea=… \| news=1 \| world=name` | runs a world; events: `world`, `sources` (news), `frame` (PNG + census per step), `result`, `error` |
 | `GET /api/worlds` | saved worlds that can be replayed |
 | `GET /api/gallery` | past runs |

@@ -58,7 +58,10 @@ def index() -> FileResponse:
 
 
 @app.get("/api/paint")
-async def paint(idea: str = Query(..., min_length=2, max_length=200), frames: int = Query(16, ge=4, le=32)):
+async def paint(idea: str = Query(..., min_length=2, max_length=200), frames: int = Query(16, ge=4, le=32),
+                res: int = Query(64)):
+    if res not in (16, 32, 64, 128):
+        return JSONResponse({"error": "res must be 16, 32, 64 or 128"}, status_code=422)
     queue: asyncio.Queue = asyncio.Queue()
 
     def on_event(kind: str, payload: dict) -> None:
@@ -67,7 +70,7 @@ async def paint(idea: str = Query(..., min_length=2, max_length=200), frames: in
     async def worker() -> None:
         try:
             async with _one_at_a_time:
-                stats = await run(idea, frames=frames, quiet=True, on_event=on_event)
+                stats = await run(idea, frames=frames, res=res, quiet=True, on_event=on_event)
             queue.put_nowait({"kind": "result", "stats": stats, "gif": _gif_url(stats)})
         except Exception as e:  # surface the error to the page instead of hanging
             queue.put_nowait({"kind": "error", "message": f"{type(e).__name__}: {e}"[:400]})

@@ -78,7 +78,7 @@ Open that `anim.gif`. If you see a rocket, everything is wired up.
 .venv/bin/pixeldrex --spec out/gallery/<run>/spec.json     # re-paint a saved plan without the director
 ```
 
-Options: `--frames N` (default 16), `--ms N` per frame (90), `--no-outline`, `--spec-only`, `--spec FILE`, `--json`.
+Options: `--res 16|32|64|128` (sprite resolution, default 64), `--frames N` (default 16), `--ms N` per frame (90), `--no-outline`, `--spec-only`, `--spec FILE`, `--json`. Example: `.venv/bin/pixeldrex "a ghost floating through a haunted house" --res 128`.
 Front-facing subjects work best (rockets, UFOs, balloons, ghosts, jellyfish); side-view animals come out blobby.
 
 ### Drex Life (the extension)
@@ -100,8 +100,8 @@ Options: `--size N` (grid, default 32), `--steps N` (default 40), `--temp T` (sa
 .venv/bin/pixeldrex-web          # http://127.0.0.1:8000
 ```
 
-- **Scene** tab (default): type an idea or click an example; watch the plan, each painted layer, the motion paths and
-  live decision / cost counters.
+- **Scene** tab (default): type an idea or click an example, pick the sprite resolution with the radio buttons (16 / 32 / 64 / 128); watch the
+  plan, each painted layer, the motion paths and live decision / cost counters.
 - **Drex Life** tab: describe a world, tick *"Build the world from this week's news"*, or click a **saved world** to
   replay it; frames stream in live with population bars and the rules.
 - Every result is added to the gallery at the bottom (files in `out/gallery/`).
@@ -274,6 +274,7 @@ $env:PORT=8001; .venv\Scripts\pixeldrex-web.exe
 
 ```powershell
 .venv\Scripts\pixeldrex.exe "a ufo abducting a cow at night"
+.venv\Scripts\pixeldrex.exe "a ghost floating through a haunted house" --res 128
 .venv\Scripts\pixeldrex.exe life --world worlds\forest-fire-cycle.json
 .venv\Scripts\pixeldrex.exe life "a zombie outbreak in a city"
 .venv\Scripts\pixeldrex.exe life --news "wildfire"

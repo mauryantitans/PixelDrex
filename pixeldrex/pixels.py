@@ -504,7 +504,7 @@ async def scene_gif(
     bg_desc = (f"background scenery only, with no characters or objects in front: {background}. "
                f"Use large flat areas of color.")
     bg_task = tagged("background", {}, paint_background(drex, bg_desc, n=16, row_weight=row_weight))
-    from pixeldrex.parts import Part, PartsSprite, paint_parts, paint_parts_32, smooth_upscale, tidy
+    from pixeldrex.parts import Part, PartsSprite, paint_parts, paint_parts_res, smooth_upscale, tidy
 
     async def sprite_painting(s: SpriteSpec):
         if s.parts:
@@ -513,8 +513,8 @@ async def scene_gif(
             subject = f"{s.name} ({s.look})"
 
             async def once(symmetric: bool):
-                if sprite_px >= 32:  # 16x16 shape, then Drex smooths every edge pixel at 32x32
-                    return await paint_parts_32(drex, subject, parts, symmetric=symmetric)
+                if sprite_px >= 32:  # 16x16 shape, then one Drex edge-smoothing pass per doubling
+                    return await paint_parts_res(drex, subject, parts, res=sprite_px, symmetric=symmetric)
                 return await paint_parts(drex, subject, parts, n=sprite_px, symmetric=symmetric)
 
             def filled(sp) -> float:
@@ -537,9 +537,10 @@ async def scene_gif(
     bg16 = cleanup(bg16, passes=2)
     sprite_ps = list(rest[: len(sprites)])
     tracks = rest[len(sprites):]
-    if canvas >= 64:  # Drex smooths the background's edges at 32x32 too (rounded hills instead of blocks)
-        smooth = await smooth_upscale(drex, PartsSprite(background, bg16.grid, {}), symmetric=False,
-                                      clamp_edges=True)
+    if canvas >= 64:  # Drex smooths the background's edges too, up to half the canvas (rounded hills, no blocks)
+        smooth = PartsSprite(background, bg16.grid, {})
+        while smooth.n < canvas // 2:
+            smooth = await smooth_upscale(drex, smooth, symmetric=False, clamp_edges=True)
         bg = Painting(smooth.grid)
     elif bg_mode == "flat":
         bg = bg16

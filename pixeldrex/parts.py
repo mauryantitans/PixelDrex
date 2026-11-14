@@ -225,3 +225,14 @@ async def paint_parts_32(drex: Drex, subject: str, parts: list[Part], *, symmetr
     """32x32 sprite: a clean 16x16 layout (part questions), then Drex smooths every edge pixel at 32x32."""
     coarse = await paint_parts(drex, subject, parts, n=16, symmetric=symmetric)
     return await smooth_upscale(drex, coarse, symmetric=symmetric)
+
+
+async def paint_parts_res(drex: Drex, subject: str, parts: list[Part], *, res: int = 32,
+                          symmetric: bool = True) -> PartsSprite:
+    """Any power-of-two resolution >= 16: the 16x16 part layout, then one Drex edge-smoothing pass per doubling
+    (16 -> 32 -> 64 -> 128). Each pass only asks local questions, so edges get smoother and curves rounder;
+    the detail itself comes from the 16x16 layout."""
+    sprite = await paint_parts(drex, subject, parts, n=16, symmetric=symmetric)
+    while sprite.n < res:
+        sprite = await smooth_upscale(drex, sprite, symmetric=symmetric)
+    return sprite

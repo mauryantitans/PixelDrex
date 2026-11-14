@@ -60,6 +60,7 @@ async def run(
     *,
     spec_path: str | None = None,
     frames: int = 16,
+    res: int = 64,
     ms: int = 90,
     outline: bool = True,
     spec_only: bool = False,
@@ -97,7 +98,7 @@ async def run(
     async with drex:
         gif_frames, meta = await scene_gif(
             drex, scene=spec.scene, background=spec.background, sprites=spec.sprites,
-            frames=frames, outline=outline, on_event=events,
+            frames=frames, outline=outline, on_event=events, sprite_px=res, canvas=2 * res,
         )
     total_s = time.perf_counter() - t_start
 
@@ -299,6 +300,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("idea", nargs="?", help="what to animate, e.g. 'a cat chasing a mouse'")
     ap.add_argument("--spec", help="paint a saved scene spec JSON instead of calling the director")
     ap.add_argument("--frames", type=int, default=16)
+    ap.add_argument("--res", type=int, default=64, choices=[16, 32, 64, 128],
+                    help="sprite resolution: 16x16 parts, then one Drex edge-smoothing pass per doubling (canvas = 2x)")
     ap.add_argument("--ms", type=int, default=90, help="milliseconds per frame")
     ap.add_argument("--no-outline", action="store_true")
     ap.add_argument("--spec-only", action="store_true", help="print the director's scene spec and stop")
@@ -308,7 +311,7 @@ def main(argv: list[str] | None = None) -> None:
         ap.error("give an idea, e.g. pixeldrex \"a cat chasing a mouse\", or --spec FILE")
 
     print(f"PixelDrex: {args.idea or args.spec}", flush=True)
-    res = asyncio.run(run(args.idea, spec_path=args.spec, frames=args.frames, ms=args.ms,
+    res = asyncio.run(run(args.idea, spec_path=args.spec, frames=args.frames, res=args.res, ms=args.ms,
                           outline=not args.no_outline, spec_only=args.spec_only, quiet=args.json))
     if args.json or args.spec_only:
         print(json.dumps(res, indent=2))

@@ -69,6 +69,11 @@
   button.chip.saved { border-color: var(--accent-2); color: var(--text); }
   .newsopt { display: none; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; margin: -2px 0 10px; }
   .newsopt input { width: 18px; height: 18px; accent-color: var(--accent-2); }
+  .resopt { flex-wrap: wrap; gap: 6px 14px; }
+  .resopt .lbl { color: var(--text); }
+  .resopt label { display: inline-flex; align-items: center; gap: 5px; color: var(--text); cursor: pointer; }
+  .resopt input[type=radio] { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }
+  .resopt .hint { color: var(--muted); font-size: 13px; }
   .sources { margin: 12px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
   .sources a { color: var(--accent-2); }
   .stage { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; margin-top: 24px; }
@@ -136,6 +141,14 @@
     <input id="idea" type="text" autocomplete="off" placeholder="Type an idea… e.g. a rocket launching at night" maxlength="200">
     <button id="go" type="submit">Paint</button>
   </form>
+  <div class="newsopt resopt" id="resopt" role="radiogroup" aria-label="Sprite resolution">
+    <span class="lbl">Sprite resolution:</span>
+    <label><input type="radio" name="res" value="16"> 16×16</label>
+    <label><input type="radio" name="res" value="32"> 32×32</label>
+    <label><input type="radio" name="res" value="64" checked> 64×64</label>
+    <label><input type="radio" name="res" value="128"> 128×128</label>
+    <span class="hint">16×16 part layout, then Drex smooths every edge pixel at each doubling</span>
+  </div>
   <label class="newsopt" id="newsopt"><input type="checkbox" id="newsbox"> Build the world from this week's news on this topic (Keenable searches and reads the articles; every rule cites them)</label>
   <div class="chips" id="chips"></div>
   <div class="chips replay" id="replay"></div>
@@ -192,6 +205,7 @@ function setMode(m) {
   $("modehint").textContent = HINT[m];
   $("go").textContent = m === "life" ? "Run" : "Paint";
   $("newsopt").style.display = m === "life" ? "flex" : "none";
+  $("resopt").style.display = m === "scene" ? "flex" : "none";
   $("replay").style.display = m === "life" ? "flex" : "none";
   $("idea").placeholder = m === "life" ? "Describe a world… e.g. a zombie outbreak in a city" : "Type an idea… e.g. a rocket launching at night";
   $("k-dec").textContent = m === "life" ? "cell decisions" : "Drex decisions";
@@ -292,7 +306,7 @@ function start(ev) {
   const tracks = [];
   let sprites = 0, motions = 0, nSprites = 0;
 
-  es = new EventSource("/api/paint?idea=" + encodeURIComponent(idea));
+  es = new EventSource("/api/paint?idea=" + encodeURIComponent(idea) + "&res=" + (document.querySelector('input[name="res"]:checked') || { value: 64 }).value);
   es.onmessage = (m) => {
     const e = JSON.parse(m.data);
     if (e.usage) setStats(e.usage);
