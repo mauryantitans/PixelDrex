@@ -30,6 +30,9 @@ Rules:
 - 1 to 3 sprites. Each sprite is ONE simple object (a cat, a star, a car), never a group or a crowd.
 - Describe sprites with bold shapes and 2-3 colors from this palette only: {", ".join(PALETTE)}.
 - The background contains no characters or objects that move; put anything that moves in a sprite.
+- Name each background area with a DIFFERENT palette color word (e.g. "a lightgray wall over a brown floor"),
+  never two shades of the same color, so the areas are clearly distinct.
+- Make sprites contrast with the background behind them (no white sprite on a white sky).
 - Never include text, letters, numbers or logos.
 - Motion must be something a single object can do: move between positions, rise, fall, bounce, grow, shrink,
   or stay still. Say where it starts and where it ends.

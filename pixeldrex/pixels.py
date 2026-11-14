@@ -24,6 +24,7 @@ PALETTE: dict[str, tuple[int, int, int]] = {
     "white": (255, 255, 255),
     "black": (20, 20, 24),
     "gray": (140, 140, 150),
+    "lightgray": (205, 208, 215),
     "red": (225, 40, 50),
     "pink": (250, 150, 180),
     "orange": (245, 140, 30),
@@ -120,6 +121,48 @@ async def paint(
     answers = await drex.ask_many(state, _pixel_questions(n, colors), images=images, model=model)
     grid = [[answers[f"p_{r:02d}_{c:02d}"]["choice"] for c in range(n)] for r in range(n)]
     probs = [[answers[f"p_{r:02d}_{c:02d}"]["probabilities"] for c in range(n)] for r in range(n)]
+    return Painting(grid, probs)
+
+
+async def paint_background(
+    drex: Drex,
+    description: str,
+    *,
+    n: int = 16,
+    colors: list[str] | None = None,
+    row_weight: float = 1.0,
+    model: str = "drex-max-v1.1",
+) -> Painting:
+    """Paint a background in ONE request: n*n pixel questions + n 'main color of row r' questions.
+
+    Each pixel's color = argmax of P_pixel(color) * P_row(color)^row_weight. Because Drex's probabilities are
+    calibrated, the row answers fill in large areas that the pixel answers are unsure about (e.g. a floor)."""
+    colors = list(colors or PALETTE)
+    crit = {c: None for c in colors}
+    qs = _pixel_questions(n, colors)
+    for r in range(n):
+        qs[f"row_{r:02d}"] = choice(
+            f"Which color covers most of row {r} of the picture? (row 0 is the top edge, row {n - 1} the bottom edge)",
+            crit,
+        )
+    state = (
+        f"You are painting a {n}x{n} pixel-art background, like classic 8-bit game scenery. "
+        f"Scene: {description}. Use large flat areas of color."
+    )
+    r = await drex.ask(state, qs, model=model)
+    grid, probs = [], []
+    for row in range(n):
+        prow = r.answers[f"row_{row:02d}"]["probabilities"]
+        g_row, p_row = [], []
+        for col in range(n):
+            pp = r.answers[f"p_{row:02d}_{col:02d}"]["probabilities"]
+            fused = {c: pp.get(c, 0.0) * (prow.get(c, 0.0) + 1e-6) ** row_weight for c in colors}
+            z = sum(fused.values()) or 1.0
+            fused = {c: v / z for c, v in fused.items()}
+            g_row.append(max(fused, key=fused.get))
+            p_row.append(fused)
+        grid.append(g_row)
+        probs.append(p_row)
     return Painting(grid, probs)
 
 
@@ -425,6 +468,7 @@ async def scene_gif(
     k: int = 6,
     bg_mode: str = "flat",  # "flat": 16x16 cleaned, scaled up  |  "refine": repainted at canvas size
     outline: bool = True,
+    row_weight: float = 0.5,
     on_event: "Callable[[str, dict], None] | None" = None,
 ) -> tuple[list[Image.Image], dict]:
     """Background painted once, sprites painted once (best of k, cleaned, trimmed), Drex decides motion.
@@ -440,7 +484,7 @@ async def scene_gif(
 
     bg_desc = (f"background scenery only, with no characters or objects in front: {background}. "
                f"Use large flat areas of color.")
-    bg_task = tagged("background", {}, paint(drex, bg_desc, n=16))
+    bg_task = tagged("background", {}, paint_background(drex, bg_desc, n=16, row_weight=row_weight))
     sprite_tasks = [tagged("sprite", {"name": s.name}, best_painting(drex, s.look, n=sprite_px, k=k, sprite=True))
                     for s in sprites]
     others = ", ".join(f"the {s.name} ({s.motion})" for s in sprites)
