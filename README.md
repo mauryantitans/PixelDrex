@@ -4,6 +4,8 @@
 
 Built at **Drexathon** (Nace AI, Nov 14 2026) · Track: 🎨 Wildcard
 
+📖 **Docs:** [Setup](docs/SETUP.md) · [How it works — Scenes and Drex Life architecture](docs/ARCHITECTURE.md) · [Submission](docs/SUBMISSION.md)
+
 🎥 **Backup demo video (2½ min):** [`docs/video/pixeldrex_demo.mp4`](docs/video/pixeldrex_demo.mp4) — live runs of the web app: a 32×32 rocket being painted part by part, then Drex Life: a forest fire (replayed world) and a wildfire world built from this week's news.
 
 <p>
@@ -161,6 +163,8 @@ fire [2, 3]`, `fire with a rain neighbour rarely becomes ash [1, 4]`.*
 
 ## Quick start
 
+Full instructions — getting the keys, god mode, configuration, troubleshooting, Windows — are in [docs/SETUP.md](docs/SETUP.md).
+
 ```bash
 python -m venv .venv && .venv/bin/pip install -e .
 cp .env.example .env   # add NACE_API_KEY (console.nace.ai) and DEEPINFRA_API_KEY
@@ -193,6 +197,8 @@ The web app has both modes. In **Scene** (the default) you see the director's pl
 | `scripts/` | Experiments (parts vs colors, 16 vs 32, v1 per-frame painting, large images, background fusion, Life demos) and the demo-video builder |
 | `docs/deck/` | The pitch deck: built from the real runs (`build_assets.py`, `build_deck.py`) and imported into Adobe Express |
 | `docs/video/` | The backup demo video |
+| `docs/SETUP.md` | Full setup instructions |
+| `docs/ARCHITECTURE.md` | How Scenes and Drex Life work, with diagrams |
 | `docs/SUBMISSION.md` | The Drexathon submission text |
 | `bench/` | Side experiment: Drex vs LLMs writing pixel grids as text |
 | `PLAN.md` | The build plan written at 11:00 (this README describes what was actually built) |
