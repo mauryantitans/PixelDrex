@@ -116,7 +116,10 @@ async def paint_parts(
     n: int = 16,
     symmetric: bool = True,
     model: str = "drex-max-v1.1",
+    guide: "PartsSprite | None" = None,
 ) -> PartsSprite:
+    """guide: a coarser painting of the same sprite (same framing). Drex sees it as Image 1 and keeps its shapes
+    while adding smoother edges and finer detail; its part colors are reused, so no color questions are asked."""
     half = n // 2 if symmetric else n
     crit = {EMPTY: "background: no part of the subject is here"}
     crit |= {p.name: p.description for p in parts}
@@ -129,12 +132,22 @@ async def paint_parts(
             qs[f"p_{r:02d}_{c:02d}"] = choice(
                 f"Which part of the {subject} covers the pixel at row {r}, column {c}? {where}", crit)
     palette = {k: None for k in PALETTE}
-    for i, p in enumerate(parts):
-        qs[f"color_{i}"] = choice(f"What color is the {subject}'s {p.name} ({p.description})?", palette)
+    if guide is None:
+        for i, p in enumerate(parts):
+            qs[f"color_{i}"] = choice(f"What color is the {subject}'s {p.name} ({p.description})?", palette)
     state = (f"A {n}x{n} pixel-art sprite of {subject}, like a classic 8-bit video game icon: centered, filling most "
              f"of the grid, bold and simple. It is made of these parts: "
              + "; ".join(f"{p.name}: {p.description}" for p in parts) + ".")
-    ans = await drex.ask_many(state, qs, model=model)
+    images = None
+    if guide is not None:
+        from pixeldrex.pixels import png_b64
+
+        legend = ", ".join(f"{p.name} = {guide.colors.get(p.name, '?')}" for p in parts)
+        state += (f" Image 1 is a rough {guide.n}x{guide.n} version of exactly this sprite, in the same position "
+                  f"(colors: {legend}; the gray background is empty). Keep its layout, shapes and proportions, "
+                  f"and at {n}x{n} make the edges smoother and add small details.")
+        images = [png_b64(guide.flat(1, bg=(205, 210, 220), shade=False, outline=False), upscale_to=512)]
+    ans = await drex.ask_many(state, qs, model=model, images=images)
     grid, probs = [], []
     for r in range(n):
         row = [ans[f"p_{r:02d}_{c:02d}"]["choice"] for c in range(half)]
@@ -144,5 +157,71 @@ async def paint_parts(
             prow = prow + prow[::-1]
         grid.append(row)
         probs.append(prow)
-    colors = {p.name: ans[f"color_{i}"]["choice"] for i, p in enumerate(parts)}
+    if guide is not None:
+        colors = {p.name: guide.colors.get(p.name, "gray") for p in parts}
+    else:
+        colors = {p.name: ans[f"color_{i}"]["choice"] for i, p in enumerate(parts)}
     return PartsSprite(subject, grid, colors, probs)
+
+
+_DIRS8 = [("north-west", -1, -1), ("north", -1, 0), ("north-east", -1, 1), ("west", 0, -1),
+          ("east", 0, 1), ("south-west", 1, -1), ("south", 1, 0), ("south-east", 1, 1)]
+
+
+async def smooth_upscale(drex: Drex, s: PartsSprite, *, symmetric: bool = True, passes: int = 1,
+                         model: str = "drex-max-v1.1", clamp_edges: bool = False) -> PartsSprite:
+    """Double the resolution, then let Drex decide every edge pixel from its local neighbourhood only:
+    "this pixel is 'body'; north: nose cone, east: empty, ... which part should it be so the outline is smooth?"
+    No coordinates are asked (Drex is good at local judgments, weak at exact positions). Identical neighbourhoods
+    share one question, so a sprite needs about one request per pass."""
+    n = s.n * 2
+    grid = [[s.grid[r // 2][c // 2] for c in range(n)] for r in range(n)]
+    cols = range(n // 2) if symmetric else range(n)
+
+    def at(g, r, c):
+        if 0 <= r < n and 0 <= c < n:
+            return g[r][c]
+        if clamp_edges:  # backgrounds: the world continues past the edge
+            return g[min(max(r, 0), n - 1)][min(max(c, 0), n - 1)]
+        return EMPTY
+
+    for _ in range(passes):
+        keys: dict[tuple, list[tuple[int, int]]] = {}
+        for r in range(n):
+            for c in cols:
+                me = grid[r][c]
+                nb = tuple(at(grid, r + dr, c + dc) for _, dr, dc in _DIRS8)
+                if all(x == me for x in nb):
+                    continue  # interior pixel: nothing to decide
+                keys.setdefault((me, nb), []).append((r, c))
+        if not keys:
+            break
+        qs = {}
+        key_list = list(keys)
+        for i, (me, nb) in enumerate(key_list):
+            options = {me} | set(nb)
+            crit = {o: ("background, nothing here" if o == EMPTY else f"part of the {o}") for o in sorted(options)}
+            around = ", ".join(f"{d} {x}" for (d, _, _), x in zip(_DIRS8, nb))
+            qs[f"k{i:04d}"] = choice(
+                f"This pixel is currently '{me}'. Around it: {around}. To make every shape's outline smooth and "
+                f"natural (rounded curves and clean diagonals, no jagged stair steps or stray pixels), which should "
+                f"this pixel be?", crit)
+        state = (f"Smoothing a {n}x{n} pixel-art sprite of {s.subject} that was just enlarged from {s.n}x{s.n}, so "
+                 f"its edges are blocky 2x2 stair steps. Each question is about one edge pixel and its 8 neighbours.")
+        ans = await drex.ask_many(state, qs, model=model)
+        new = [row[:] for row in grid]
+        for i, k in enumerate(key_list):
+            pick = ans[f"k{i:04d}"]["choice"]
+            for r, c in keys[k]:
+                new[r][c] = pick
+        grid = new
+        if symmetric:
+            for r in range(n):
+                grid[r][n // 2:] = grid[r][: n // 2][::-1]
+    return PartsSprite(s.subject, grid, dict(s.colors))
+
+
+async def paint_parts_32(drex: Drex, subject: str, parts: list[Part], *, symmetric: bool = True) -> PartsSprite:
+    """32x32 sprite: a clean 16x16 layout (part questions), then Drex smooths every edge pixel at 32x32."""
+    coarse = await paint_parts(drex, subject, parts, n=16, symmetric=symmetric)
+    return await smooth_upscale(drex, coarse, symmetric=symmetric)

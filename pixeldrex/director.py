@@ -13,7 +13,7 @@ from pixeldrex.llm import DeepInfra
 from pixeldrex.pixels import PALETTE, SpriteSpec
 
 SYSTEM = f"""You are the director of a tiny pixel-art animation studio. A painter that only answers
-multiple-choice questions will paint your scene pixel by pixel on a 32x32 canvas, so you must keep everything
+multiple-choice questions will paint your scene pixel by pixel on a 64x64 canvas (sprites are 32x32), so you must keep everything
 SIMPLE and ICONIC, like a classic 8-bit video game.
 
 Turn the user's idea into a JSON scene spec:
