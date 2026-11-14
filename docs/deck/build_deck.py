@@ -79,9 +79,9 @@ S.append(slide(1,
     text(110, 500, 860, "Drex can't draw. It only answers multiple-choice questions — so every pixel of every "
                         "frame is a question, and the answers become animated GIFs.", 36, BODY, C["muted"], 400, 1.4) +
     text(110, 800, 900, "github.com/mauryantitans/PixelDrex", 32, DOT, C["teal"]) +
-    picture(1170, 150, 620, 620, "hero_scene.png", "a ufo abducting a cow, painted and animated by Drex") +
-    text(1170, 800, 620, "“a ufo abducting a cow at night” — painted and animated by Drex: 1,046 decisions, "
-                         "9 seconds, under a cent.", 26, BODY,
+    picture(1170, 150, 620, 620, "hero_scene.png", "a ghost floating through a haunted house, painted and animated by Drex") +
+    text(1170, 800, 620, "“a ghost floating through a haunted house” — painted and animated by Drex: 572 questions, "
+                         "7 seconds, half a cent.", 26, BODY,
          C["muted"], 400, 1.35)))
 
 # 2 — ask the right question
@@ -106,9 +106,9 @@ S.append(slide(3,
     text(110, 240, 1700, "A director LLM (DeepInfra) names the scene, its sprites and their parts. Drex decides every "
                          "pixel of the 32×32 sprites, every part's color, and every frame's position — 512 px GIFs.", 30, BODY, C["muted"], 400,
          1.35) +
-    picture(110, 335, 1080, 211, "strip_ufo.png", "ufo abducting a cow, 5 frames", border=False) +
-    text(1260, 360, 560, "“a ufo abducting a cow at night”", 30, BODY, C["text"], 600, 1.3) +
-    text(1260, 450, 560, "1,046 decisions · 8 Drex calls · 9 s", 26, DOT, C["teal"]) +
+    picture(110, 335, 1080, 211, "strip_ghost.png", "ghost floating through a haunted house, 5 frames", border=False) +
+    text(1260, 360, 560, "“a ghost floating through a haunted house”", 30, BODY, C["text"], 600, 1.3) +
+    text(1260, 450, 560, "572 Drex questions · 5 calls · 7 s", 26, DOT, C["teal"]) +
     picture(110, 585, 1080, 211, "strip_rocket.png", "rocket launching, 5 frames", border=False) +
     text(1260, 610, 560, "“a rocket launching at night”", 30, BODY, C["text"], 600, 1.3) +
     text(1260, 700, 560, "594 decisions · 5 Drex calls · 5 s", 26, DOT, C["teal"]) +

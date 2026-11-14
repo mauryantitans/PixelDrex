@@ -6,7 +6,7 @@
 
 **Repo:** https://github.com/mauryantitans/PixelDrex
 
-**Presentation:** Adobe Express deck (8 slides) — https://new.express.adobe.com/id/urn:aaid:sc:AP:93340975-a1c6-4efa-859f-3dfac88ec332
+**Presentation:** Adobe Express deck (8 slides) — https://new.express.adobe.com/id/urn:aaid:sc:AP:6b92f91d-58a2-4ff1-bfd2-276901be6e56
 
 **Demo:** `pixeldrex-web` (live) · backup video `docs/video/pixeldrex_demo.mp4` · animated results in the README gallery
 
