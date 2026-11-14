@@ -15,21 +15,27 @@ BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 REG = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
 CLIPS = [
-    ("demo_life_forest_fire.mp4", "Drex Life: a forest fire",
-     "Every cell asks Drex what it becomes, every step. Rules are plain English."),
-    ("demo_life_news_wildfire.mp4", "Drex Life from this week's news: wildfire",
+    ("demo_life_forest_fire.mp4", "Let it live: a forest fire",
+     "Every frame, every pixel asks Drex what it becomes. Rules are plain English."),
+    ("demo_life_news_wildfire.mp4", "Let it live: this week's wildfire news",
      "Keenable searches and reads the articles; every rule cites its sources."),
-    ("demo_scene_ufo.mp4", "Scene: a ufo abducting a cow at night",
-     "A director plans the scene; Drex paints every pixel and decides the motion."),
+    ("demo_scene_rocket.mp4", "Paint it: a rocket launching at night",
+     "Drex decides which part covers every pixel, each part's color, and every frame's position."),
 ]
 
 
-def card(path: Path, title: str, sub: str, kicker: str = "PIXELDREX · every pixel is a decision") -> None:
+def card(path: Path, title: str, sub: str, kicker: str = "PIXELDREX · GIFs made entirely of decisions") -> None:
     img = Image.new("RGB", (W, H), (13, 15, 26))
     d = ImageDraw.Draw(img)
+    import textwrap
+
     d.text((90, 300), kicker, font=ImageFont.truetype(REG, 26), fill=(79, 209, 197))
-    d.text((90, 350), title, font=ImageFont.truetype(BOLD, 52), fill=(255, 204, 51))
-    d.text((90, 440), sub, font=ImageFont.truetype(REG, 28), fill=(200, 206, 230))
+    size = 52
+    while size > 30 and d.textlength(title, font=ImageFont.truetype(BOLD, size)) > W - 180:
+        size -= 2  # shrink long titles to fit
+    d.text((90, 350), title, font=ImageFont.truetype(BOLD, size), fill=(255, 204, 51))
+    for i, line in enumerate(textwrap.wrap(sub, 62)):
+        d.text((90, 440 + i * 40), line, font=ImageFont.truetype(REG, 28), fill=(200, 206, 230))
     img.save(path)
 
 
@@ -43,7 +49,7 @@ def main() -> None:
     tmp.mkdir(exist_ok=True)
     parts = []
     intro = tmp / "card_0.png"
-    card(intro, "PixelDrex — backup demo", "Live runs of the web app, recorded Nov 14 2026 at Drexathon.")
+    card(intro, "PixelDrex — GIFs made entirely of decisions", "Backup demo: live runs of the web app, recorded Nov 14 2026 at Drexathon.")
     parts.append((intro, 3.0))
     for i, (clip, title, sub) in enumerate(CLIPS, 1):
         c = tmp / f"card_{i}.png"

@@ -105,9 +105,36 @@ def _life_event(kind: str, payload: dict) -> dict:
     }
 
 
+WORLDS = ROOT / "worlds"
+FEATURED = ["forest-fire-cycle", "zombie-outbreak-city", "news-bird-flu", "news-wildfire", "coral-reef-dynamics"]
+
+
+@app.get("/api/worlds")
+def worlds() -> JSONResponse:
+    """Saved worlds that can be replayed (known-good rules)."""
+    out = []
+    names = sorted((p.stem for p in WORLDS.glob("*.json")), key=lambda n: (n not in FEATURED, FEATURED.index(n)
+                                                                            if n in FEATURED else 0, n))
+    for name in names:
+        try:
+            w = json.loads((WORLDS / f"{name}.json").read_text())
+            out.append({"name": name, "title": w.get("title", name), "states": len(w.get("states", []))})
+        except (OSError, json.JSONDecodeError):
+            continue
+    return JSONResponse(out)
+
+
 @app.get("/api/life")
-async def life(idea: str = Query(..., min_length=2, max_length=200), size: int = Query(32, ge=8, le=48),
-               steps: int = Query(40, ge=5, le=120), news: bool = False):
+async def life(idea: str = Query("", max_length=200), size: int = Query(32, ge=8, le=48),
+               steps: int = Query(40, ge=5, le=120), news: bool = False, world: str | None = None):
+    world_path = None
+    if world:
+        candidate = (WORLDS / f"{world}.json").resolve()
+        if candidate.parent != WORLDS.resolve() or not candidate.exists():
+            return JSONResponse({"error": f"unknown world {world!r}"}, status_code=404)
+        world_path = str(candidate)
+    elif len(idea.strip()) < 2:
+        return JSONResponse({"error": "give an idea or a saved world"}, status_code=422)
     queue: asyncio.Queue = asyncio.Queue()
 
     def on_event(kind: str, payload: dict) -> None:
@@ -116,8 +143,9 @@ async def life(idea: str = Query(..., min_length=2, max_length=200), size: int =
     async def worker() -> None:
         try:
             async with _one_at_a_time:
-                stats = await run_life_saved(None if news else idea, size=size, steps=steps, on_event=on_event,
-                                             quiet=True, news=idea if news else None)
+                stats = await run_life_saved(None if (news or world_path) else idea, size=size, steps=steps,
+                                             on_event=on_event, quiet=True, news=idea if news else None,
+                                             world_path=world_path)
             queue.put_nowait({"kind": "result", "stats": stats, "gif": _gif_url(stats)})
         except Exception as e:
             queue.put_nowait({"kind": "error", "message": f"{type(e).__name__}: {e}"[:400]})

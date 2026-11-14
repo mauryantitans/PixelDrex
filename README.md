@@ -4,7 +4,7 @@
 
 Built at **Drexathon** (Nace AI, Nov 14 2026) · Track: 🎨 Wildcard
 
-🎥 **Backup demo video (2 min):** [`docs/video/pixeldrex_demo.mp4`](docs/video/pixeldrex_demo.mp4) — live runs of the web app: a forest fire, a wildfire world built from this week's news, and a scene being painted.
+🎥 **Backup demo video (2½ min):** [`docs/video/pixeldrex_demo.mp4`](docs/video/pixeldrex_demo.mp4) — live runs of the web app: a forest fire (replayed world), a wildfire world built from this week's news, and a rocket being painted part by part.
 
 Two ways a decision model makes a GIF:
 
@@ -151,7 +151,7 @@ cp .env.example .env   # add NACE_API_KEY (console.nace.ai) and DEEPINFRA_API_KE
 .venv/bin/pixeldrex-web                         # web app on http://127.0.0.1:8000
 ```
 
-The web app has both modes. In **Drex Life** you watch the world evolve frame by frame as Drex decides it, with live population bars for each state, the rules, and counters for cell decisions vs unique Drex questions. In **Scene** you see the director's plan, each layer as it's painted, the motion paths Drex chose, and live decision/cost counters. Everything lands in the gallery.
+The web app has both modes. In **Drex Life** you can describe a new world, build one from this week's news, or **replay a saved world** (one click, known-good rules, fresh Drex decisions), and watch it evolve frame by frame as Drex decides it, with live population bars for each state, the rules, and counters for cell decisions vs unique Drex questions. In **Scene** you see the director's plan, each layer as it's painted, the motion paths Drex chose, and live decision/cost counters. Everything lands in the gallery.
 
 ## Layout
 

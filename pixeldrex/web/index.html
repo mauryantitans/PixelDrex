@@ -64,6 +64,9 @@
   .lg .n { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
   .rules { margin: 14px 0 0; padding-left: 18px; color: var(--muted); font-size: 14px; }
   .rules li { margin: 3px 0; }
+  .replay { margin-top: 10px; display: none; align-items: center; }
+  .replay .lbl { color: var(--muted); font-size: 14px; margin-right: 4px; }
+  button.chip.saved { border-color: var(--accent-2); color: var(--text); }
   .newsopt { display: none; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; margin: -2px 0 10px; }
   .newsopt input { width: 18px; height: 18px; accent-color: var(--accent-2); }
   .sources { margin: 12px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
@@ -135,6 +138,7 @@
   </form>
   <label class="newsopt" id="newsopt"><input type="checkbox" id="newsbox"> Build the world from this week's news on this topic (Keenable searches and reads the articles; every rule cites them)</label>
   <div class="chips" id="chips"></div>
+  <div class="chips replay" id="replay"></div>
 
   <section class="stage">
     <div class="card">
@@ -188,6 +192,7 @@ function setMode(m) {
   $("modehint").textContent = HINT[m];
   $("go").textContent = m === "life" ? "Run" : "Paint";
   $("newsopt").style.display = m === "life" ? "flex" : "none";
+  $("replay").style.display = m === "life" ? "flex" : "none";
   $("idea").placeholder = m === "life" ? "Describe a world… e.g. a zombie outbreak in a city" : "Type an idea… e.g. a rocket launching at night";
   $("k-dec").textContent = m === "life" ? "cell decisions" : "Drex decisions";
   $("k-calls").textContent = m === "life" ? "unique Drex questions" : "Drex calls";
@@ -199,6 +204,19 @@ function setMode(m) {
     $("chips").appendChild(c);
   });
 }
+async function loadWorlds() {
+  try {
+    const ws = await (await fetch("/api/worlds")).json();
+    $("replay").innerHTML = `<span class="lbl">Replay a saved world:</span>`;
+    ws.slice(0, 6).forEach((w) => {
+      const c = document.createElement("button");
+      c.type = "button"; c.className = "chip saved"; c.textContent = w.title; c.dataset.world = w.name;
+      c.onclick = () => { $("idea").value = ""; startLife(w.name, w.title); };
+      $("replay").appendChild(c);
+    });
+  } catch (e) { /* replay row is optional */ }
+}
+loadWorlds();
 $("m-scene").onclick = () => setMode("scene");
 $("m-life").onclick = () => setMode("life");
 setMode("scene");
@@ -313,9 +331,10 @@ function start(ev) {
   es.onerror = () => { if ($("go").disabled) { $("err").textContent = "Connection lost."; clearInterval(timer); finish(); } };
 }
 
-function startLife() {
+function startLife(world, worldTitle) {
   const idea = $("idea").value.trim();
-  if (idea.length < 2 || $("go").disabled) return;
+  if ($("go").disabled) return;
+  if (!world && idea.length < 2) return;
   if (es) es.close();
   $("go").disabled = true; $("err").textContent = ""; $("steps").innerHTML = ""; $("spec").innerHTML = "";
   $("paths").style.display = "none";
@@ -324,9 +343,11 @@ function startLife() {
   t0 = performance.now(); clearInterval(timer);
   timer = setInterval(() => setStats(null, (performance.now() - t0) / 1000), 100);
   step("director", "Director is designing the world", "run", "states, colors, rules in plain English");
-  const news = $("newsbox").checked;
+  const news = !world && $("newsbox").checked;
   if (news) step("news", "Keenable is searching this week's news", "run", "search + read the top articles");
-  es = new EventSource("/api/life?idea=" + encodeURIComponent(idea) + (news ? "&news=1" : ""));
+  if (world) step("director", `Replaying saved world “${worldTitle}”`, "run", "same rules as a known-good run · fresh Drex decisions");
+  es = new EventSource("/api/life?" + (world ? "world=" + encodeURIComponent(world)
+                                             : "idea=" + encodeURIComponent(idea) + (news ? "&news=1" : "")));
   let sourcesHtml = "";
   es.onmessage = (m) => {
     const e = JSON.parse(m.data);
