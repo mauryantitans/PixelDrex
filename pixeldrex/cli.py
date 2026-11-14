@@ -232,10 +232,35 @@ def life_main(argv: list[str]) -> None:
           f"{res['drex']['calls']} calls · {res['seconds']}s · Drex ≈ ${res['drex']['cost_usd']:.4f}")
 
 
+def god_main(argv: list[str]) -> None:
+    from pixeldrex.god import god
+
+    ap = argparse.ArgumentParser(prog="pixeldrex god",
+                                 description="Intern becomes the god of a Drex Life world and tunes its laws of physics.")
+    ap.add_argument("idea", nargs="?", default="")
+    ap.add_argument("--world", help="start from a saved world JSON instead of designing one")
+    ap.add_argument("--size", type=int, default=24)
+    ap.add_argument("--steps", type=int, default=30)
+    ap.add_argument("--max-runs", type=int, default=4)
+    args = ap.parse_args(argv)
+    if not args.idea and not args.world:
+        ap.error("give an idea or --world FILE")
+    print(f"PixelDrex god mode: {args.idea or args.world}", flush=True)
+    res = asyncio.run(god(args.idea, size=args.size, steps=args.steps, max_runs=args.max_runs,
+                          world_file=args.world))
+    print("\n--- original rules ---\n" + (res["original_rules"] or ""))
+    print("\n--- final rules ---\n" + (res["final_rules"] or ""))
+    print("\n--- Intern says ---\n" + (res["final_reply"] or "(no reply)"))
+    print(f"\n  {len(res['reports'])} world runs · {res['turns']} Intern turns · {res['seconds']}s · "
+          f"{res['system1_asks']} System 1 (Drex) asks · log {res['log']}")
+
+
 def main(argv: list[str] | None = None) -> None:
     argv = sys.argv[1:] if argv is None else argv
     if argv and argv[0] == "life":
         return life_main(argv[1:])
+    if argv and argv[0] == "god":
+        return god_main(argv[1:])
     ap = argparse.ArgumentParser(prog="pixeldrex", description="Drex paints and animates your idea as a pixel-art GIF.")
     ap.add_argument("idea", nargs="?", help="what to animate, e.g. 'a cat chasing a mouse'")
     ap.add_argument("--spec", help="paint a saved scene spec JSON instead of calling the director")

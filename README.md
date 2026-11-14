@@ -34,6 +34,24 @@ Two things you can do with it:
 | Forest fire | 24×24 × 30 | 17,280 | 191 | 15 s | $0.004 |
 | Zombie outbreak | 32×32 × 40 | 40,960 | 590 | 17 s | $0.008 |
 
+### 😇 God mode: Intern rewrites the laws of physics
+
+```bash
+.venv/bin/pixeldrex god "a coral reef: coral grows, warm water bleaches coral, fish help bleached coral recover"
+```
+
+[Intern](https://github.com/nace-ai/intern), Nace's coding agent, becomes the god of a Drex Life world. It runs the world
+(`pixeldrex life --world worlds/<name>.json --report`), reads the report, and if a state died out, the world froze,
+or one state took over, it **edits the English rules in the world file** and runs it again — up to 4 times.
+Two Drexes are at work: one decides every cell of the universe; the other, as Intern's System 1, supervises the god.
+
+<img src="docs/gallery/god_coral_before_after.png" width="720" alt="coral reef before and after Intern">
+
+*Top: the director's original rules — a coral blob drips down and the world dies. Bottom: after Intern's 3 rewrites
+(fish that can come back on their own, density-based neighbour counts, overcrowding that causes bleaching) — a living
+reef where coral spreads, bleaches and recovers, and a school of fish moves through. 4 world runs, 12 Intern turns,
+128 s, 29 System 1 (Drex) asks; the full agent log is in `intern_logs/`.*
+
 ## 🎬 Scenes
 
 <p>
@@ -86,6 +104,9 @@ The web app has both modes. In **Drex Life** you watch the world evolve frame by
 |---|---|
 | `pixeldrex/drex.py` | Async Drex client: typed questions, images, 8-in-flight limit, retries, cost/latency tracking |
 | `pixeldrex/life.py` | Drex Life: world design, seeding, per-situation questions with caching, probabilistic steps |
+| `pixeldrex/god.py` | God mode: Intern tunes a world's rules until it stays alive |
+| `scripts/intern.sh`, `intern_logs/` | Run Intern headless on this repo; every Intern run's JSON events and reply |
+| `worlds/` | Saved worlds (rules in English) |
 | `pixeldrex/pixels.py` | Scene engine: paint, background fusion, sample, judge, refine, tiled painting, motion, compositing |
 | `pixeldrex/director.py` | Scene director: idea → scene spec JSON (DeepInfra LLM) |
 | `pixeldrex/llm.py` | DeepInfra client: chat, vision, FLUX images |
