@@ -133,13 +133,19 @@ async def run(
 
 
 async def run_life_saved(
-    idea: str, *, size: int = 32, steps: int = 40, temperature: float = 0.6, on_event=None, quiet: bool = False
+    idea: str, *, size: int = 32, steps: int = 40, temperature: float = 0.6, on_event=None, quiet: bool = False,
+    world_path: str | None = None,
 ) -> dict:
     """Drex Life: design a world from an idea, run it, save GIF + stats to the gallery."""
-    from pixeldrex.life import run_life
+    from pixeldrex.life import World, run_life
 
     prog = Progress(quiet)
     t_start = time.perf_counter()
+    world_obj = None
+
+    if world_path:
+        world_obj = World.from_dict(json.loads(Path(world_path).read_text()))
+        idea = idea or world_obj.title
 
     def on_world(w) -> None:
         prog.log(f"world '{w.title}': " + ", ".join(f"{s.name}={s.color}" for s in w.states))
@@ -155,9 +161,10 @@ async def run_life_saved(
             on_event("frame", {"step": i, "life": life, "info": info,
                                "elapsed": time.perf_counter() - t_start})
 
-    prog.log(f"director is designing a world: {idea!r}")
+    if world_obj is None:
+        prog.log(f"director is designing a world: {idea!r}")
     life, frames, usage = await run_life(idea, n=size, steps=steps, temperature=temperature,
-                                         on_frame=on_frame, on_world=on_world)
+                                         on_frame=on_frame, on_world=on_world, world=world_obj)
     total_s = time.perf_counter() - t_start
     run_dir = GALLERY / f"{datetime.now():%Y%m%d-%H%M%S}-life-{slugify(life.world.title)}"
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -179,19 +186,47 @@ async def run_life_saved(
         "gif": str((run_dir / "anim.gif").relative_to(ROOT)),
     }
     (run_dir / "stats.json").write_text(json.dumps(stats, indent=2))
+    (run_dir / "world.json").write_text(json.dumps(life.world.to_dict(), indent=2))
+
+    # Build compact report
+    census_first = life.census_history[0]
+    census_last = life.census_history[-1] if life.census_history else {}
+    extinct = [state for state, count in census_last.items() if count == 0 and census_first.get(state, 0) > 0]
+    changed_last_5 = sum(life.changed_history[-5:])
+    report = {
+        "title": life.world.title,
+        "steps": life.steps,
+        "census_first": census_first,
+        "census_last": census_last,
+        "extinct": extinct,
+        "changed_cells_last_5_steps": changed_last_5,
+        "gif": str((run_dir / "anim.gif").relative_to(ROOT)),
+    }
+    stats["report"] = report
+
     return stats
 
 
 def life_main(argv: list[str]) -> None:
     ap = argparse.ArgumentParser(prog="pixeldrex life",
                                  description="Drex Life: every pixel is an agent; the laws of physics are plain English.")
-    ap.add_argument("idea", help="a world, e.g. 'a zombie outbreak in a city'")
+    ap.add_argument("idea", nargs="?", help="a world, e.g. 'a zombie outbreak in a city'")
+    ap.add_argument("--world", metavar="PATH", dest="world_path", help="load a world JSON and run without calling the director")
     ap.add_argument("--size", type=int, default=32)
     ap.add_argument("--steps", type=int, default=40)
     ap.add_argument("--temp", type=float, default=0.6, help="sampling temperature over Drex's probabilities")
+    ap.add_argument("--report", action="store_true", help="print a compact JSON report to stdout after the run")
     args = ap.parse_args(argv)
-    print(f"PixelDrex Life: {args.idea}", flush=True)
-    res = asyncio.run(run_life_saved(args.idea, size=args.size, steps=args.steps, temperature=args.temp))
+    if not args.idea and not args.world_path:
+        ap.error("give an idea, e.g. pixeldrex life \"a zombie outbreak\", or --world FILE")
+    idea = args.idea or "(from world)"
+    if not args.report:
+        print(f"PixelDrex Life: {idea}", flush=True)
+    res = asyncio.run(run_life_saved(args.idea, size=args.size, steps=args.steps, temperature=args.temp,
+                                     world_path=args.world_path, quiet=args.report))
+    if args.report:
+        print(json.dumps(res.get("report", {})))
+        return
     print(f"\n  GIF: {res['gif']}")
     print(f"  {res['cell_decisions']:,} cell decisions from {res['unique_questions']:,} unique Drex questions in "
           f"{res['drex']['calls']} calls · {res['seconds']}s · Drex ≈ ${res['drex']['cost_usd']:.4f}")

@@ -182,10 +182,15 @@ class Life:
     steps: int = 0
     asked: int = 0  # unique questions sent to Drex
     cell_updates: int = 0  # cell decisions made (asked + reused)
+    census_history: list[dict[str, int]] = field(default_factory=list)
+    changed_history: list[int] = field(default_factory=list)
 
     def __post_init__(self):
         self.rnd = random.Random(self.seed_value)
         self.directional = is_directional(self.world)
+        if not self.census_history:
+            self.census_history.append(self.census())
+            self.changed_history.append(0)
 
     def _rules_state(self) -> str:
         legend = "; ".join(f"{s.name}: {s.meaning}" for s in self.world.states)
@@ -203,6 +208,7 @@ class Life:
             ans = await drex.ask_many(self._rules_state(), qs)
             for i, k in enumerate(new):
                 self.cache[k] = ans[f"q{i:04d}"]["probabilities"]
+        changed = 0
         nxt = []
         for r in range(n):
             row = []
@@ -214,13 +220,17 @@ class Life:
                 else:
                     w = [max(probs[x], 1e-9) ** (1 / self.temperature) for x in names]
                     row.append(self.rnd.choices(names, weights=w)[0])
+                if row[-1] != self.grid[r][c]:
+                    changed += 1
             nxt.append(row)
         self.grid = nxt
         self.steps += 1
         self.asked += len(new)
         self.cell_updates += n * n
+        self.census_history.append(self.census())
+        self.changed_history.append(changed)
         return {"step": self.steps, "new_questions": len(new), "cached": len(keys) - len(new),
-                "unique_situations": len(self.cache)}
+                "unique_situations": len(self.cache), "changed": changed}
 
     def image(self, scale: int = 10) -> Image.Image:
         n = len(self.grid)
