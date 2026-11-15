@@ -48,6 +48,12 @@ def main() -> None:
     Image.open(G / "parts_vs_colors.png").convert("RGB").save(OUT / "parts_vs_colors.png")
     key(G / "news_bird_flu.gif", 0.5, 420).save(OUT / "news_bird_flu.png")
     Image.open(G / "god_coral_before_after.png").convert("RGB").save(OUT / "god_coral.png")
+    # technical deck (32x32 gallery scenes)
+    scenes = G / "scenes"
+    key(scenes / "ghost.gif", 0.5, 640).save(OUT / "tech_hero.png")
+    strip(scenes / "sapling.gif", 5, 320, gap=20).save(OUT / "strip_sapling.png")
+    strip(scenes / "ball.gif", 5, 320, gap=20).save(OUT / "strip_ball.png")
+    Image.open(G / "resolution_ladder.png").convert("RGB").save(OUT / "resolution_ladder.png")
     for p in sorted(OUT.glob("*.png")):
         print(p.name, Image.open(p).size, p.stat().st_size // 1024, "KB")
 

@@ -159,9 +159,10 @@ intern_logs/                       every Intern run: JSON events + final reply
 
 ```bash
 .venv/bin/python docs/deck/build_assets.py && .venv/bin/python docs/deck/build_deck.py   # -> docs/deck/pixeldrex_deck.html
+.venv/bin/python docs/deck/build_tech_deck.py   # -> docs/deck/pixeldrex_tech_deck.html (2-minute technical deck)
 ```
 
-The deck HTML was imported into Adobe Express with the Adobe connector. To re-record the demo video, start
+Both decks share `docs/deck/deck_kit.py`; their HTML was imported into Adobe Express with the Adobe connector. To re-record the demo video, start
 `pixeldrex-web`, record each run with Playwright, then stitch them:
 
 ```bash
